@@ -10,13 +10,13 @@ cffi==2.1.1
 charset-normalizer==3.5.2
 click==8.5.0
 colorama==0.4.6
-comtypes==1.4.17
+comtypes==1.4.17; sys_platform == "win32"
 ctranslate2==4.8.2
 edge-tts==7.2.8
 -e .
 et_xmlfile==2.0.0
 faster-whisper==1.2.1
-filelock==4.0.12
+filelock==4.1.0
 flatbuffers==25.12.19
 frozenlist==1.8.0
 fsspec==2026.9.0
@@ -46,7 +46,7 @@ pluggy==1.6.0
 propcache==0.5.4
 protobuf==7.36.2
 psutil==7.2.2
-pycaw==20260927
+pycaw==20260927; sys_platform == "win32"
 pycparser==3.11
 Pygments==2.21.0
 pypdf==6.20.0
@@ -55,7 +55,7 @@ PyQt6-Qt6==6.11.2
 PyQt6_sip==13.13.0
 pytest==9.1.1
 python-docx==1.2.0
-pywin32-ctypes==0.2.3
+pywin32-ctypes==0.2.3; sys_platform == "win32"
 PyYAML==6.0.3
 reportlab==4.5.1
 sounddevice==0.5.6
@@ -65,5 +65,15 @@ tqdm==4.70.1
 truststore==0.10.4
 typing_extensions==4.16.0
 tzdata==2026.5
+winrt-runtime==3.2.1; sys_platform == "win32"
+winrt-Windows.Foundation==3.2.1; sys_platform == "win32"
+winrt-Windows.Foundation.Collections==3.2.1; sys_platform == "win32"
+winrt-Windows.Globalization==3.2.1; sys_platform == "win32"
+winrt-Windows.Graphics.Imaging==3.2.1; sys_platform == "win32"
+winrt-Windows.Media.Ocr==3.2.1; sys_platform == "win32"
+winrt-Windows.Storage==3.2.1; sys_platform == "win32"
+winrt-Windows.Storage.Streams==3.2.1; sys_platform == "win32"
 yarl==1.25.1
 zipp==4.1.1
+tesserocr @ https://github.com/simonflueckiger/tesserocr-windows_build/releases/download/tesserocr-v2.10.0-tesseract-5.5.2/tesserocr-2.10.0-cp311-cp311-win_amd64.whl ; sys_platform == 'win32' and python_version == '3.11' and platform_machine == 'AMD64'
+tesserocr @ https://github.com/simonflueckiger/tesserocr-windows_build/releases/download/tesserocr-v2.10.0-tesseract-5.5.2/tesserocr-2.10.0-cp312-cp312-win_amd64.whl ; sys_platform == 'win32' and python_version == '3.12' and platform_machine == 'AMD64'

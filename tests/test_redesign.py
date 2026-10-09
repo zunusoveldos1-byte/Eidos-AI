@@ -35,7 +35,7 @@ def test_navigation_and_future_actions_disabled(app, tmp_path):
             assert window.pages.currentIndex() == index
             assert button.isChecked()
         assert not window.gestures.camera_button.isEnabled()
-        assert not window.translation.select_button.isEnabled()
+        assert window.translation.select_button.isEnabled()
         window.home.voice_button.click()
         assert window.pages.currentIndex() == 1
         window.sidebar.assistant_button.click()
