@@ -1,0 +1,76 @@
+"""Validated user preferences."""
+
+from dataclasses import asdict, dataclass, fields
+import json
+import os
+from pathlib import Path
+import tempfile
+
+MODELS = ('tiny', 'base', 'small', 'medium', 'large-v3')
+
+
+def data_dir() -> Path:
+    override = os.environ.get('EIDOS_DATA_DIR')
+    if override:
+        return Path(override)
+    return Path(os.environ.get('LOCALAPPDATA', str(Path.home() / '.local' / 'share'))) / 'Eidos'
+
+
+@dataclass(frozen=True)
+class AppConfig:
+    microphone: int | None = None
+    microphone_name: str | None = None
+    whisper_model: str = 'base'
+    device: str = 'cpu'
+    speak: bool = True
+    tts_voice: str = 'ru-RU-SvetlanaNeural'
+    always_on_top: bool = False
+    mascot_animation: bool = True
+
+    def validate(self) -> None:
+        if self.microphone is not None and (type(self.microphone) is not int or self.microphone < 0):
+            raise ValueError('Некорректный номер микрофона')
+        if self.microphone_name is not None and not isinstance(self.microphone_name, str):
+            raise ValueError('Некорректное имя микрофона')
+        if self.whisper_model not in MODELS or self.device not in ('cpu', 'cuda'):
+            raise ValueError('Некорректная модель или устройство Whisper')
+        if type(self.speak) is not bool or not isinstance(self.tts_voice, str) or not self.tts_voice.strip():
+            raise ValueError('Некорректные настройки озвучивания')
+        if type(self.always_on_top) is not bool or type(self.mascot_animation) is not bool:
+            raise ValueError('Некорректные настройки внешнего вида')
+
+
+class ConfigStore:
+    def __init__(self, path: Path | None = None) -> None:
+        self.path = path if path is not None else data_dir() / 'config.json'
+        self.warning: str | None = None
+
+    def load(self) -> AppConfig:
+        self.warning = None
+        try:
+            content = json.loads(self.path.read_text(encoding='utf-8-sig'))
+            if not isinstance(content, dict):
+                raise ValueError('Ожидался JSON-объект')
+            names = {field.name for field in fields(AppConfig)}
+            config = AppConfig(**{key: value for key, value in content.items() if key in names})
+            config.validate()
+            return config
+        except FileNotFoundError:
+            return AppConfig()
+        except (OSError, ValueError, TypeError):
+            self.warning = 'Настройки не прочитаны: применены значения по умолчанию.'
+            return AppConfig()
+
+    def save(self, config: AppConfig) -> None:
+        config.validate()
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        fd, name = tempfile.mkstemp(dir=self.path.parent, suffix='.tmp')
+        temporary = Path(name)
+        try:
+            with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+                json.dump(asdict(config), stream, ensure_ascii=False, indent=2)
+                stream.flush()
+                os.fsync(stream.fileno())
+            temporary.replace(self.path)
+        finally:
+            temporary.unlink(missing_ok=True)

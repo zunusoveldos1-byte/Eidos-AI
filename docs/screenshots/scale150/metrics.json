@@ -1,0 +1,82 @@
+[
+  {
+    "page": "home",
+    "logical_size": [
+      1200,
+      703
+    ],
+    "pixel_size": [
+      1800,
+      1055
+    ],
+    "device_pixel_ratio": 1.5,
+    "content_width": 974,
+    "viewport_width": 974,
+    "vertical_scroll": 83,
+    "horizontal_scroll": 0
+  },
+  {
+    "page": "voice",
+    "logical_size": [
+      1200,
+      703
+    ],
+    "pixel_size": [
+      1800,
+      1055
+    ],
+    "device_pixel_ratio": 1.5,
+    "content_width": 974,
+    "viewport_width": 974,
+    "vertical_scroll": 83,
+    "horizontal_scroll": 0
+  },
+  {
+    "page": "gestures",
+    "logical_size": [
+      1200,
+      703
+    ],
+    "pixel_size": [
+      1800,
+      1055
+    ],
+    "device_pixel_ratio": 1.5,
+    "content_width": 974,
+    "viewport_width": 974,
+    "vertical_scroll": 81,
+    "horizontal_scroll": 0
+  },
+  {
+    "page": "translation",
+    "logical_size": [
+      1200,
+      703
+    ],
+    "pixel_size": [
+      1800,
+      1055
+    ],
+    "device_pixel_ratio": 1.5,
+    "content_width": 974,
+    "viewport_width": 974,
+    "vertical_scroll": 49,
+    "horizontal_scroll": 0
+  },
+  {
+    "page": "settings",
+    "logical_size": [
+      1200,
+      703
+    ],
+    "pixel_size": [
+      1800,
+      1055
+    ],
+    "device_pixel_ratio": 1.5,
+    "content_width": 974,
+    "viewport_width": 974,
+    "vertical_scroll": 54,
+    "horizontal_scroll": 0
+  }
+]

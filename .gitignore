@@ -1,0 +1,16 @@
+.venv/
+.python/
+.tools/
+.cache/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+*.mp3
+*.wav
+config.json
+
+artifacts/
+bin/
+obj/

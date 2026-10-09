@@ -1,0 +1,10 @@
+{
+  "microphone": null,
+  "microphone_name": null,
+  "whisper_model": "base",
+  "device": "cpu",
+  "speak": true,
+  "tts_voice": "ru-RU-SvetlanaNeural",
+  "always_on_top": false,
+  "mascot_animation": true
+}

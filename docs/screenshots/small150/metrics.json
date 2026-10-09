@@ -1,0 +1,82 @@
+[
+  {
+    "page": "home",
+    "logical_size": [
+      820,
+      580
+    ],
+    "pixel_size": [
+      1230,
+      870
+    ],
+    "device_pixel_ratio": 1.5,
+    "content_width": 594,
+    "viewport_width": 594,
+    "vertical_scroll": 786,
+    "horizontal_scroll": 0
+  },
+  {
+    "page": "voice",
+    "logical_size": [
+      820,
+      580
+    ],
+    "pixel_size": [
+      1230,
+      870
+    ],
+    "device_pixel_ratio": 1.5,
+    "content_width": 594,
+    "viewport_width": 594,
+    "vertical_scroll": 842,
+    "horizontal_scroll": 0
+  },
+  {
+    "page": "gestures",
+    "logical_size": [
+      820,
+      580
+    ],
+    "pixel_size": [
+      1230,
+      870
+    ],
+    "device_pixel_ratio": 1.5,
+    "content_width": 594,
+    "viewport_width": 594,
+    "vertical_scroll": 682,
+    "horizontal_scroll": 0
+  },
+  {
+    "page": "translation",
+    "logical_size": [
+      820,
+      580
+    ],
+    "pixel_size": [
+      1230,
+      870
+    ],
+    "device_pixel_ratio": 1.5,
+    "content_width": 594,
+    "viewport_width": 594,
+    "vertical_scroll": 842,
+    "horizontal_scroll": 0
+  },
+  {
+    "page": "settings",
+    "logical_size": [
+      820,
+      580
+    ],
+    "pixel_size": [
+      1230,
+      870
+    ],
+    "device_pixel_ratio": 1.5,
+    "content_width": 594,
+    "viewport_width": 594,
+    "vertical_scroll": 663,
+    "horizontal_scroll": 0
+  }
+]

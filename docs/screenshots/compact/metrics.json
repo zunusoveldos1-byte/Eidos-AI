@@ -1,0 +1,18 @@
+[
+  {
+    "page": "compact",
+    "logical_size": [
+      560,
+      720
+    ],
+    "pixel_size": [
+      700,
+      900
+    ],
+    "device_pixel_ratio": 1.25,
+    "content_width": 552,
+    "viewport_width": 552,
+    "vertical_scroll": 745,
+    "horizontal_scroll": 0
+  }
+]
