@@ -86,7 +86,9 @@ class TranslationHotkeys(QObject):
 
     def configure(self, config):
         configured = configured_shortcuts(config)
-        wanted = configured if config.translation_hotkeys_enabled and not self.suspended else {}
+        wanted = {action: shortcut for action, shortcut in configured.items()
+                  if not self.suspended and (config.voice_hotkey_enabled if action == 'voice'
+                                             else config.translation_hotkeys_enabled)}
         new_bindings, new_actions, acquired = {}, {}, []
         for action, shortcut in wanted.items():
             if shortcut is None:
@@ -110,7 +112,7 @@ class TranslationHotkeys(QObject):
             if identity not in new_bindings:
                 self.backend.unregister(identifier)
         self.bindings, self.actions, self.config = new_bindings, new_actions, config
-        if not config.translation_hotkeys_enabled:
+        if not config.translation_hotkeys_enabled and not config.voice_hotkey_enabled:
             self.message = 'Горячие клавиши выключены.'
         elif self.suspended:
             self.message = 'Введите комбинацию, затем нажмите «Сохранить».'

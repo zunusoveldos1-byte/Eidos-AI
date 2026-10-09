@@ -19,6 +19,7 @@ class VoiceController(QObject):
     devices_error = pyqtSignal(str)
     agent_progress = pyqtSignal(str, str)
     closed = pyqtSignal()
+    level = pyqtSignal(float)
     start_requested = pyqtSignal(object, object)
     devices_requested = pyqtSignal()
 
@@ -45,6 +46,7 @@ class VoiceController(QObject):
         self.worker.devices.connect(self._devices)
         self.worker.devices_error.connect(self._devices_error)
         self.worker.agent_progress.connect(self.agent_progress)
+        self.worker.level.connect(self.level)
         self.playback.finished.connect(self._playback_finished)
         self.playback.error.connect(self._error)
         self.thread.finished.connect(self.worker.deleteLater)

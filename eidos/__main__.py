@@ -38,7 +38,7 @@ def main() -> int:
     window.navigate(['home', 'voice', 'gestures', 'translation', 'settings', 'assistant'].index(args.page))
     window.show()
     if args.smoke_test:
-        QTimer.singleShot(1000, window.close)
+        QTimer.singleShot(1000, window.request_exit)
     return app.exec()
 
 

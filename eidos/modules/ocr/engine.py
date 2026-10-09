@@ -5,6 +5,7 @@ import json
 import sys
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 from PyQt6.QtCore import QBuffer, QIODevice, QRectF, Qt
 
@@ -96,8 +97,15 @@ class OnlineTranslator:
             query = urlencode({'client': 'gtx', 'sl': source, 'tl': target, 'dt': 't', 'q': chunk})
             request = Request('https://translate.googleapis.com/translate_a/single?' + query,
                               headers={'User-Agent': 'Eidos/0.1'})
-            with urlopen(request, timeout=15) as response:
-                data = json.load(response)
+            try:
+                with urlopen(request, timeout=15) as response:
+                    data = json.load(response)
+            except HTTPError as exc:
+                if exc.code == 429:
+                    raise RuntimeError('Google временно ограничил запросы. Попробуйте позже или смените провайдер, когда он будет доступен.') from exc
+                raise RuntimeError(f'Сервис перевода недоступен (HTTP {exc.code}).') from exc
+            except URLError as exc:
+                raise RuntimeError('Не удалось подключиться к сервису перевода. Проверьте интернет.') from exc
             translated = ''.join(part[0] for part in data[0] if part and part[0])
             if not translated:
                 raise RuntimeError('Сервис перевода вернул пустой ответ.')

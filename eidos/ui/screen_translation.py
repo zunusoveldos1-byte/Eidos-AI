@@ -106,20 +106,10 @@ class TranslationWorker(QThread):
     def run(self):
         try:
             self.progress.emit('Распознавание текста…')
-            lines = self.ocr.recognize(self.image, self.source)
-            if self.cancel.is_set():
-                return
-            if not lines:
-                raise RuntimeError('Текст не найден. Выделите область с более крупными надписями.')
-            self.recognized.emit('\n'.join(line.text for line in lines))
-            cache = {}
-            for index, line in enumerate(lines, 1):
-                if self.cancel.is_set():
-                    return
-                if line.text not in cache:
-                    self.progress.emit(f'Перевод: {index} из {len(lines)} строк')
-                    cache[line.text] = self.translator.translate(line.text, self.source, self.target)
-                line.translation = cache[line.text]
+            from eidos.modules.ocr.interface import JonSnowTranslator
+            adapter = JonSnowTranslator(self.ocr, self.translator)
+            lines = adapter.process(self.image, self.source, self.target, getattr(self, 'provider', 'google'),
+                                    self.cancel, self.progress.emit, self.recognized.emit)
             if not self.cancel.is_set():
                 self.result.emit(lines)
         except Exception as exc:

@@ -1,0 +1,15 @@
+{
+  "microphone_recorded": false,
+  "wake_word_executed": false,
+  "platform": "windows",
+  "tray_available": true,
+  "close_kept_voice_worker": true,
+  "close_hid_window": true,
+  "voice_hotkey_native_registration": true,
+  "voice_hotkey_native_message_dispatched": true,
+  "exit_completed": true,
+  "voice_worker_stopped": true,
+  "agent_worker_stopped": true,
+  "speech_worker_stopped": true,
+  "hotkeys_released": true
+}

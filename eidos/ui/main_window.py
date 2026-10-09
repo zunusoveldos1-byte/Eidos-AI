@@ -82,6 +82,19 @@ class MainWindow(AssistantBindings, QMainWindow):
             self._log(self.store.warning)
         self._log('Eidos готов. Микрофон включается только по кнопке. Лимит записи — 120 секунд.')
         self._init_agent(show_onboarding=store is None)
+        from .background import BackgroundControls
+        self.background = BackgroundControls(self)
+        self.controller.reply.connect(self._voice_reply_speech)
+        self.controller.worker.finished.connect(self._voice_cycle_finished)
+        self.settings.sample_requested.connect(self._speech_sample)
+        self.settings.stop_speech_requested.connect(self.background.stop_speech)
+        self.settings.wake_secret_requested.connect(self._save_wake_secret)
+        self.settings.voices_requested.connect(self.background.speech.refresh_voices)
+        self.background.speech.voices_ready.connect(self.settings.load_sapi_voices)
+        self.background.speech.voices_error.connect(self.settings.feedback.setText)
+        self.translation.capture_started.connect(self.background.capture_started)
+        self.translation.capture_finished.connect(self.background.capture_finished)
+        self.translation.speak_requested.connect(self.background.speak)
         QTimer.singleShot(0, self._refresh)
 
     def _build_ui(self) -> None:
@@ -143,11 +156,13 @@ class MainWindow(AssistantBindings, QMainWindow):
 
     def _apply_preferences(self) -> None:
         self._update_hotkey_hints()
+        if hasattr(self, 'background'):
+            self.background.apply()
         blocker = QSignalBlocker(self.voice.speak)
         self.voice.speak.setChecked(self.config.speak)
         del blocker
         for mascot in self.findChildren(Mascot):
-            mascot.set_animations(self.config.mascot_animation)
+            mascot.set_animations(self.config.mascot_animation and not self.config.reduce_animations)
         target_flag = Qt.WindowType.WindowStaysOnTopHint
         enabled = bool(self.windowFlags() & target_flag)
         if enabled != self.config.always_on_top:
@@ -194,6 +209,7 @@ class MainWindow(AssistantBindings, QMainWindow):
                          always_on_top=self.settings.on_top.isChecked(),
                          mascot_animation=self.settings.animation.isChecked(),
                          translation_hotkeys_enabled=self.settings.hotkeys_enabled.isChecked(),
+                         **self.settings.background_values(),
                          translation_capture_hotkey=self.settings.capture_hotkey.keySequence().toString(QKeySequence.SequenceFormat.PortableText),
                          translation_repeat_hotkey=self.settings.repeat_hotkey.keySequence().toString(QKeySequence.SequenceFormat.PortableText),
                          translation_dismiss_hotkey=self.settings.dismiss_hotkey.keySequence().toString(QKeySequence.SequenceFormat.PortableText))
@@ -215,6 +231,7 @@ class MainWindow(AssistantBindings, QMainWindow):
             return
         if self._persist(AppConfig()):
             self.settings.load(self.config)
+            self.translation.load_preferences(self.config)
             self._select_microphone(self.voice.microphone, self.config)
             self._select_microphone(self.settings.microphone, self.config)
             self.settings.feedback.setText('Настройки сброшены.')
@@ -299,6 +316,8 @@ class MainWindow(AssistantBindings, QMainWindow):
 
     def _update_controls(self) -> None:
         busy = self.controller.active or self.controller.playback.active
+        if hasattr(self, 'background'):
+            busy = busy or self.background.speech.active
         agent_busy = hasattr(self, 'agent_controller') and self.agent_controller.active
         unavailable = self.controller.closing or self.controller.discovering
         can_start = bool(self._microphones) and self.voice.microphone.currentData() != -1
@@ -316,6 +335,12 @@ class MainWindow(AssistantBindings, QMainWindow):
         self.voice.show_state(visual_state, message)
         self.home.status.setText('●  ' + message)
         self.sidebar.logo.set_state(self.voice.mascot.state)
+        if hasattr(self, 'background'):
+            if state == 'idle' and self.background.speech.active:
+                self.background.status('playing' if self.controller.playback.active else 'synthesizing',
+                                       'Говорю…' if self.controller.playback.active else 'Подготовка речи…')
+            else:
+                self.background.status(visual_state, message)
         self._update_controls()
         if hasattr(self, 'agent_controller'):
             self._agent_controls()
@@ -323,6 +348,9 @@ class MainWindow(AssistantBindings, QMainWindow):
     @pyqtSlot()
     def _action(self) -> None:
         if not self.voice.action_button.isEnabled():
+            return
+        if hasattr(self, 'background'):
+            self.background.voice_action()
             return
         if self.controller.active or self.controller.playback.active:
             self.controller.stop()
@@ -344,6 +372,10 @@ class MainWindow(AssistantBindings, QMainWindow):
 
     @pyqtSlot()
     def _closed(self) -> None:
+        if not self._closing:
+            return
+        if hasattr(self, 'background') and (self.background.speech.is_running or self.background.wake.is_running):
+            return
         if hasattr(self, 'agent_controller') and self.agent_controller.thread.isRunning():
             return
         if self.controller.thread.isRunning() or self.translation.is_running:
@@ -357,7 +389,7 @@ class MainWindow(AssistantBindings, QMainWindow):
 
     def _update_hotkey_hints(self):
         controls = {'capture': self.translation.select_button, 'repeat': self.translation.refresh_button,
-                    'dismiss': self.translation.remove_button}
+                    'dismiss': self.translation.remove_button, 'voice': self.voice.action_button}
         active = set(self.hotkeys.actions.values())
         hints = []
         for action, (field, title) in ACTIONS.items():
@@ -370,6 +402,10 @@ class MainWindow(AssistantBindings, QMainWindow):
     @pyqtSlot(str)
     def _translation_hotkey(self, action):
         if self._closing:
+            return
+        if action == 'voice':
+            if hasattr(self, 'background'):
+                self.background.voice_action()
             return
         if action == 'capture':
             if not self.translation.is_running and not self.translation._selecting:
@@ -390,10 +426,52 @@ class MainWindow(AssistantBindings, QMainWindow):
     def closeEvent(self, event: QCloseEvent) -> None:
         if self._allow_close:
             event.accept()
+            from PyQt6.QtWidgets import QApplication
+            QApplication.instance().quit()
         else:
             event.ignore()
+            if (not self._closing and self.config.close_to_tray and hasattr(self, 'background')
+                    and self.background.tray_available()):
+                self.hide()
+                return
             self._closing = True
+            if hasattr(self, 'background'):
+                self.background.shutdown()
             self.hotkeys.shutdown()
             self.translation.shutdown()
             self._shutdown_agent()
             self.controller.shutdown()
+
+    def request_exit(self):
+        self._closing = True
+        self.close()
+
+    def _voice_reply_speech(self, text):
+        if self.config.speak and not self._closing:
+            self.background.speak(text)
+
+    def _voice_cycle_finished(self):
+        if hasattr(self.controller.worker.recorder, 'end_of_speech'):
+            self.controller.worker.recorder.end_of_speech = False
+
+    def _speech_sample(self):
+        if self.controller.active or self.agent_controller.active or self._closing:
+            return
+        from dataclasses import replace
+        self.background.stop_speech()
+        self.background.speech.enqueue('Привет! Я Эйдос. Помогу с делами и отвечу на вопросы.',
+                                       replace(self.config, **self.settings.background_values(),
+                                               tts_voice=self.settings.tts_voice.currentData()))
+
+    def _save_wake_secret(self, value):
+        try:
+            if value.strip():
+                self.agent_service.secrets.set('porcupine_access_key', value)
+            else:
+                self.agent_service.secrets.delete('porcupine_access_key')
+            self.settings.wake_access_key.clear()
+            self.agent_service.memory.secret_values = self.agent_service.secrets.values()
+            self.settings.wake_status.setText('Ключ сохранён отдельно от проекта.' if value.strip() else 'Ключ удалён.')
+            self.background.wake.configure(self.config)
+        except Exception:
+            self.settings.wake_status.setText('Не удалось изменить ключ в Windows Credential Manager.')

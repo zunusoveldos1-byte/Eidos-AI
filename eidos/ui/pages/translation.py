@@ -9,6 +9,9 @@ from ..components import Card, Page, ResponsiveRow, TextCard, Toggle, button, co
 class TranslationPage(Page):
     stopped = pyqtSignal()
     preferences_changed = pyqtSignal(str, str, bool)
+    capture_started = pyqtSignal()
+    capture_finished = pyqtSignal()
+    speak_requested = pyqtSignal(str)
 
     def __init__(self):
         super().__init__('Перевод экрана', 'Выделите текст, исправьте его при необходимости и получите перевод')
@@ -20,6 +23,7 @@ class TranslationPage(Page):
         self.overlay = self.overlay_controls = None
         self.closing = self._selecting = self._refreshing = self._cancelled = False
         self._updating_text = self._busy_state = False
+        self._capture_backup = None
         self.status = label('●  Готов к выделению', 'moduleBadge')
         self.header.addWidget(self.status)
         self.body.addWidget(label('1. Нажмите «Выделить текст»  →  2. Обведите нужную надпись мышью  →  3. Дождитесь перевода', 'secondary'))
@@ -46,6 +50,11 @@ class TranslationPage(Page):
         self.body.addWidget(setting_row('Показывать перевод поверх исходного текста', self.show_overlay))
         self.feedback = label('Текст отправляется Google только после запуска перевода. Языки и способ показа запоминаются.', 'muted')
         self.body.addWidget(self.feedback)
+        self.provider = combo()
+        self.provider.addItem('Google — отправляется только распознанный текст', 'google')
+        self.provider.addItem('Не отправлять текст в сеть', '')
+        self.body.addWidget(setting_row('Провайдер перевода', self.provider))
+        self.provider.currentIndexChanged.connect(self._provider_changed)
         self.region_info = label('Область ещё не выбрана. Начните с зелёной кнопки или вставьте текст ниже.', 'muted')
         self.body.addWidget(self.region_info)
         self.loading_widget = QWidget()
@@ -85,6 +94,9 @@ class TranslationPage(Page):
         self.copy_translation = button('Скопировать перевод', 'copy')
         self.copy_translation.clicked.connect(self.translated.copy)
         self.translated.body.addWidget(self.copy_translation)
+        self.speak_button = button('Озвучить перевод', 'mic')
+        self.speak_button.clicked.connect(lambda: self.speak_requested.emit(self.translated.text.toPlainText()))
+        self.translated.body.addWidget(self.speak_button)
         self.translated.text.textChanged.connect(self._update_actions)
         self.original.text.textChanged.connect(self._text_changed)
         self.body.addWidget(ResponsiveRow([self.original, self.translated], threshold=640))
@@ -101,7 +113,17 @@ class TranslationPage(Page):
         self.source.setCurrentIndex(max(0, self.source.findData(config.translation_source_language)))
         self.target.setCurrentIndex(max(0, self.target.findData(config.translation_target_language)))
         self.show_overlay.setChecked(config.translation_show_overlay)
+        blocker = QSignalBlocker(self.provider)
+        self.provider.setCurrentIndex(max(0, self.provider.findData(config.translation_provider)))
+        del blocker
         del blockers
+
+    def _provider_changed(self):
+        from dataclasses import replace
+        window = self.window()
+        if hasattr(window, '_persist'):
+            if not window._persist(replace(window.config, translation_provider=self.provider.currentData())):
+                self.load_preferences(window.config)
 
     def _preferences_changed(self, *args):
         if not self.show_overlay.isChecked():
@@ -165,7 +187,9 @@ class TranslationPage(Page):
     def start_capture(self):
         if self.is_running or self._selecting or self.closing:
             return
-        self.dismiss_overlay(restore=False)
+        self._cancelled = False
+        self._hide_capture_overlays()
+        self.capture_started.emit()
         self._selecting = True
         self._busy(True)
         self._status('Выделите текст мышью', 'busy')
@@ -198,6 +222,7 @@ class TranslationPage(Page):
             selector.close()
             selector.deleteLater()
         self.selectors.clear()
+        self.capture_finished.emit()
 
     def _restore_window(self):
         if not self.closing:
@@ -211,7 +236,34 @@ class TranslationPage(Page):
         self._clear_selectors()
         self._busy(False)
         self._status('Выделение отменено')
-        self._restore_window()
+        if not self._restore_capture_overlays():
+            self._restore_window()
+
+    def _hide_capture_overlays(self):
+        self._capture_backup = (self.region, self.captured_image, self.last_lines,
+                                getattr(self, 'selected_screen', None), self.window().isVisible(),
+                                bool(self.overlay and self.overlay.isVisible()),
+                                bool(self.overlay_controls and self.overlay_controls.isVisible()))
+        for widget in (self.overlay, self.overlay_controls):
+            if widget:
+                widget.hide()
+
+    def _restore_capture_overlays(self):
+        backup, self._capture_backup = self._capture_backup, None
+        if backup is None:
+            return False
+        self.region, self.captured_image, self.last_lines, self.selected_screen, visible, layer, controls = backup
+        if self.closing:
+            return False
+        if layer and self.overlay:
+            self.overlay.show()
+        if controls and self.overlay_controls:
+            self.overlay_controls.show()
+        if visible:
+            self._restore_window()
+        elif layer:
+            self.window().hide()
+        return bool(layer)
 
     def _selected(self, selector, rect):
         self.selected_screen = selector.screen
@@ -234,13 +286,15 @@ class TranslationPage(Page):
     def refresh_capture(self):
         if self.is_running or self._selecting or self.closing:
             return
+        self._cancelled = False
         if self.region is None:
             if self.captured_image is not None:
                 self.retry_translation()
             else:
                 self.start_capture()
             return
-        self.dismiss_overlay(restore=False)
+        self._hide_capture_overlays()
+        self.capture_started.emit()
         self._selecting = self._refreshing = True
         self._busy(True)
         self._status('Новый снимок выбранной области', 'busy')
@@ -270,6 +324,9 @@ class TranslationPage(Page):
     def retry_translation(self):
         if self.is_running or self._selecting or self.closing:
             return
+        if self.provider.currentData() != 'google':
+            self.feedback.setText('Выберите Google для перевода. Отправляется только текст, не снимок.')
+            return
         text = self.original.text.toPlainText().strip()
         if not text:
             if self.captured_image is not None:
@@ -293,10 +350,15 @@ class TranslationPage(Page):
         self._restore_window()
 
     def _process_capture(self):
+        if self.provider.currentData() != 'google':
+            self._busy(False)
+            self._failed('Провайдер не выбран. Изображение осталось локальным; текст не отправлен.')
+            return
         self._begin_processing()
         self.last_lines = []
         self._set_source_text('')
         self.worker = TranslationWorker(self.captured_image, self.source.currentData(), self.target.currentData(), self)
+        self.worker.provider = self.provider.currentData()
         self.worker.recognized.connect(self._recognized)
         self.worker.result.connect(self._result)
         self._connect_worker()
@@ -333,6 +395,7 @@ class TranslationPage(Page):
             self.feedback.setText('Готово. Скопируйте результат справа. Для показа на экране выделите соответствующий текст.')
 
     def _show_result(self, lines):
+        self._capture_backup = None
         self.dismiss_overlay(restore=False)
         if not self.show_overlay.isChecked():
             self._status('Перевод готов')
@@ -356,7 +419,8 @@ class TranslationPage(Page):
             return
         self._status('Не удалось перевести', 'error')
         self.feedback.setText(message)
-        self._restore_window()
+        if not self._restore_capture_overlays():
+            self._restore_window()
 
     def _finished(self):
         worker, self.worker = self.worker, None
@@ -365,6 +429,7 @@ class TranslationPage(Page):
         self._busy(False)
         self.cancel_button.hide()
         if self._cancelled and not self.closing:
+            self._restore_capture_overlays()
             self._status('Обработка отменена')
             self.feedback.setText('Можно выбрать другую область или перевести этот текст снова.')
         self.stopped.emit()

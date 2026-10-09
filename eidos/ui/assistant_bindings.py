@@ -102,9 +102,14 @@ class AssistantBindings:
             QTimer.singleShot(600, self._show_onboarding)
 
     def _start_agent_task(self, kind, payload=None):
+        if hasattr(self, 'background') and self.background.speech.active:
+            self.background.stop_speech()
         if self.controller.active or self.controller.playback.active or self.controller.closing:
             self.assistant.feedback.setText('Дождитесь завершения голосовой операции.')
             return False
+        if hasattr(self, 'background'):
+            self.background.stop_speech()
+            self.background.wake.set_busy(True)
         self._agent_had_error = False
         started = self.agent_controller.start(kind, payload, incognito=self.assistant.incognito.isChecked())
         if started:
@@ -115,7 +120,8 @@ class AssistantBindings:
     def _agent_controls(self):
         ui = self.assistant
         busy = self.agent_controller.active or self.controller.active
-        ui.stop.setEnabled(busy)
+        speaking = hasattr(self, 'background') and self.background.speech.active
+        ui.stop.setEnabled(busy or speaking)
         for control in (ui.send, ui.incognito, ui.select_files, ui.select_folder, ui.forget_files, ui.document_read_button,
                         ui.document_write_button, ui.model_save, ui.server_start, ui.model_pull, ui.model_test,
                         ui.hardware_test, ui.connections_save, ui.search_test, ui.secret_delete_button, ui.profile_save,
@@ -135,6 +141,8 @@ class AssistantBindings:
             self.assistant.input.clear()
 
     def _stop_agent(self):
+        if hasattr(self, 'background'):
+            self.background.stop_speech()
         self.agent_controller.cancel()
         if self.controller.active:
             self.controller.stop()
@@ -145,6 +153,8 @@ class AssistantBindings:
         self.assistant.task_status.setText(text)
         self.assistant.mascot.set_state('acting' if state in ('acting','checking') else 'thinking')
         self.sidebar.logo.set_state(self.assistant.mascot.state)
+        if hasattr(self, 'background'):
+            self.background.status('acting' if state in ('acting', 'checking') else 'thinking', text)
         self.assistant.journal.appendPlainText(f'{datetime.now():%H:%M:%S}  {text}')
 
     def _voice_agent_progress(self, state, text):
@@ -154,16 +164,22 @@ class AssistantBindings:
         self.voice.operation.setText(text)
         self.voice.mascot.set_state('acting' if state in ('acting','checking') else 'thinking')
         self.sidebar.logo.set_state(self.voice.mascot.state)
+        if hasattr(self, 'background'):
+            self.background.status('acting' if state in ('acting', 'checking') else 'thinking', text)
         self._log(text)
 
     def _agent_answer(self, text):
         self.assistant.history.appendPlainText('Eidos\n' + text + '\n')
+        if self.config.speak and hasattr(self, 'background'):
+            self.background.speak(text)
 
     def _agent_error(self, message):
         self._agent_had_error = True
         self.assistant.task_status.setText(message)
         self.assistant.mascot.set_state('error')
         self.assistant.feedback.setText(message)
+        if hasattr(self, 'background'):
+            self.background.status('error', message)
         if message != self._last_agent_error:
             self.assistant.journal.appendPlainText(message)
             self._last_agent_error = message
@@ -188,6 +204,8 @@ class AssistantBindings:
             self.assistant.task_status.setText('Готов к запросу')
             self.assistant.mascot.set_state('ready')
             self.sidebar.logo.set_state('ready')
+            if hasattr(self, 'background') and not self.background.speech.active:
+                self.background.status('ready', 'Готов к запросу')
         self._agent_controls()
         self._update_controls()
         self._refresh_memory()

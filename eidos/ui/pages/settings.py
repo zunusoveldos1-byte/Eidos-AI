@@ -1,6 +1,6 @@
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QKeySequence
-from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget, QKeySequenceEdit
+from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget, QKeySequenceEdit, QSpinBox, QLineEdit
 from eidos.core.config import AppConfig, MODELS
 from ..components import Card, Page, ResponsiveRow, Toggle, button, combo, label, setting_row
 
@@ -8,6 +8,10 @@ from ..components import Card, Page, ResponsiveRow, Toggle, button, combo, label
 class SettingsPage(Page):
     save_requested = pyqtSignal()
     reset_requested = pyqtSignal()
+    sample_requested = pyqtSignal()
+    stop_speech_requested = pyqtSignal()
+    wake_secret_requested = pyqtSignal(str)
+    voices_requested = pyqtSignal()
 
     def __init__(self) -> None:
         super().__init__('Настройки', 'Настройте Eidos под себя')
@@ -35,6 +39,61 @@ class SettingsPage(Page):
         self.tts_voice.addItem('Дмитрий', 'ru-RU-DmitryNeural')
         voice.body.addWidget(setting_row('Голос', self.tts_voice))
         self.body.addWidget(ResponsiveRow([general, voice], threshold=690))
+        background = Card()
+        background.heading('Голос в фоне', 'mic')
+        self.close_to_tray = Toggle('Закрытие скрывает Eidos в трей')
+        self.floating_enabled = Toggle('Плавающий маскот')
+        self.floating_pinned = Toggle('Маскот поверх окон')
+        self.reduce_animations = Toggle('Уменьшить анимации')
+        self.voice_hotkey_enabled = Toggle('Глобальная клавиша голоса')
+        self.voice_hotkey = self._shortcut_editor('Начать / остановить голосовой ввод')
+        for text, control in [('Закрытие скрывает Eidos в трей', self.close_to_tray),
+                              ('Плавающий маскот', self.floating_enabled), ('Маскот поверх окон', self.floating_pinned),
+                              ('Уменьшить анимации', self.reduce_animations),
+                              ('Глобальная клавиша голоса', self.voice_hotkey_enabled), ('Начать / остановить голос', self.voice_hotkey)]:
+            background.body.addWidget(setting_row(text, control))
+        self.tts_provider = combo()
+        self.tts_provider.addItem('Edge — онлайн', 'edge')
+        self.tts_provider.addItem('Windows SAPI — локально', 'sapi')
+        self.sapi_voice = combo()
+        self.sapi_voice.setEditable(True)
+        self.sapi_voice.addItem('Русский голос Windows по умолчанию', '')
+        self.tts_rate, self.tts_volume = QSpinBox(), QSpinBox()
+        self.tts_rate.setRange(-50, 100)
+        self.tts_rate.setSuffix(' %')
+        self.tts_volume.setRange(0, 100)
+        self.tts_volume.setSuffix(' %')
+        self.voice_response_brief = Toggle('Краткие голосовые ответы')
+        for text, control in [('Провайдер озвучки', self.tts_provider), ('Голос Windows SAPI', self.sapi_voice),
+                              ('Скорость относительно обычной', self.tts_rate), ('Громкость', self.tts_volume),
+                              ('Краткие голосовые ответы', self.voice_response_brief)]:
+            background.body.addWidget(setting_row(text, control))
+        self.sample_button = button('Прослушать пример', 'mic')
+        self.voices_button = button('Найти голоса Windows')
+        self.voices_button.clicked.connect(self.voices_requested)
+        background.body.addWidget(self.voices_button)
+        self.stop_speech_button = button('Остановить озвучку')
+        self.sample_button.clicked.connect(self.sample_requested)
+        self.stop_speech_button.clicked.connect(self.stop_speech_requested)
+        background.body.addWidget(ResponsiveRow([self.sample_button, self.stop_speech_button], threshold=500))
+        wake = Card()
+        wake.heading('Активация словом — Porcupine', 'mic')
+        self.wake_word_enabled = Toggle('Локально ждать слово Eidos')
+        self.wake_keyword_path, self.wake_model_path, self.wake_access_key = QLineEdit(), QLineEdit(), QLineEdit()
+        self.wake_access_key.setEchoMode(QLineEdit.EchoMode.Password)
+        self.wake_access_key.setPlaceholderText('Новый AccessKey; хранится только в Windows Credential Manager')
+        for text, control in [('Включить активацию словом', self.wake_word_enabled), ('Windows-модель Eidos (.ppn)', self.wake_keyword_path),
+                              ('Языковая модель (.pv)', self.wake_model_path), ('AccessKey', self.wake_access_key)]:
+            wake.body.addWidget(setting_row(text, control))
+        self.wake_secret_button = button('Сохранить ключ отдельно')
+        self.wake_secret_button.clicked.connect(lambda: self.wake_secret_requested.emit(self.wake_access_key.text()))
+        wake.body.addWidget(self.wake_secret_button)
+        self.wake_status = label('Без ключа и модели голос по кнопке остаётся доступен.', 'muted')
+        self.wake_status.setWordWrap(True)
+        wake.body.addWidget(self.wake_status)
+        wake.body.addWidget(label('Обнаружение слова локальное. Во время озвучки микрофон освобождается. Нужен optional пакет pvporcupine и ваши модели.', 'muted'))
+        self.body.addWidget(background)
+        self.body.addWidget(wake)
         shortcuts = Card()
         shortcuts.heading('Горячие клавиши перевода', 'languages')
         self.hotkeys_enabled = Toggle('Включить горячие клавиши перевода')
@@ -107,6 +166,20 @@ class SettingsPage(Page):
         self.layout().addWidget(footer)
 
     def load(self, config: AppConfig) -> None:
+        for name in ('close_to_tray', 'floating_enabled', 'floating_pinned', 'reduce_animations',
+                     'voice_hotkey_enabled', 'voice_response_brief', 'wake_word_enabled'):
+            getattr(self, name).setChecked(getattr(config, name))
+        self.voice_hotkey.setKeySequence(QKeySequence(config.voice_hotkey))
+        self.tts_provider.setCurrentIndex(self.tts_provider.findData(config.tts_provider))
+        self.tts_rate.setValue(config.tts_rate)
+        self.tts_volume.setValue(config.tts_volume)
+        index = self.sapi_voice.findData(config.sapi_voice)
+        if index < 0:
+            self.sapi_voice.addItem(config.sapi_voice, config.sapi_voice)
+            index = self.sapi_voice.count() - 1
+        self.sapi_voice.setCurrentIndex(index)
+        self.wake_keyword_path.setText(config.wake_keyword_path)
+        self.wake_model_path.setText(config.wake_model_path)
         self.hotkeys_enabled.setChecked(config.translation_hotkeys_enabled)
         for control, text in [(self.capture_hotkey, config.translation_capture_hotkey),
                               (self.repeat_hotkey, config.translation_repeat_hotkey),
@@ -123,6 +196,31 @@ class SettingsPage(Page):
             index = self.tts_voice.count() - 1
         self.tts_voice.setCurrentIndex(index)
         self.feedback.setText('')
+
+    def background_values(self):
+        values = {name: getattr(self, name).isChecked() for name in
+                  ('close_to_tray', 'floating_enabled', 'floating_pinned', 'reduce_animations',
+                   'voice_hotkey_enabled', 'voice_response_brief', 'wake_word_enabled')}
+        values.update(voice_hotkey=self.voice_hotkey.keySequence().toString(QKeySequence.SequenceFormat.PortableText),
+                      tts_provider=self.tts_provider.currentData(), tts_rate=self.tts_rate.value(),
+                      tts_volume=self.tts_volume.value(), sapi_voice=(self.sapi_voice.currentData() or '')
+                      if self.sapi_voice.currentIndex() >= 0 and self.sapi_voice.currentText() == self.sapi_voice.itemText(self.sapi_voice.currentIndex())
+                      else self.sapi_voice.currentText().strip(),
+                      wake_keyword_path=self.wake_keyword_path.text().strip(), wake_model_path=self.wake_model_path.text().strip())
+        return values
+
+    def load_sapi_voices(self, voices):
+        selected = self.background_values()['sapi_voice']
+        self.sapi_voice.clear()
+        self.sapi_voice.addItem('Русский голос Windows по умолчанию', '')
+        for identifier, description in voices:
+            self.sapi_voice.addItem(description, identifier)
+        index = self.sapi_voice.findData(selected)
+        if index >= 0:
+            self.sapi_voice.setCurrentIndex(index)
+        else:
+            self.sapi_voice.setEditText(selected)
+        self.feedback.setText(f'Найдено голосов Windows: {len(voices)}.')
 
     @staticmethod
     def _shortcut_editor(name):

@@ -8,6 +8,7 @@ from PyQt6.QtGui import QKeySequence
 
 
 ACTIONS = {
+    'voice': ('voice_hotkey', 'Голосовой ввод'),
     'capture': ('translation_capture_hotkey', 'Выделить текст'),
     'repeat': ('translation_repeat_hotkey', 'Обновить эту область'),
     'dismiss': ('translation_dismiss_hotkey', 'Убрать перевод'),

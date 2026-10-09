@@ -4,7 +4,7 @@ import sys
 
 class SecretStore:
     SERVICE = 'Eidos/assistant'
-    NAMES = ('openai', 'telegram', 'discord', 'brave')
+    NAMES = ('openai', 'telegram', 'discord', 'brave', 'porcupine_access_key')
 
     def values(self) -> tuple[str, ...]:
         """Only Eidos credentials, for exact-match redaction; never enumerate Vault."""

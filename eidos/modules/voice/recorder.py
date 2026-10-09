@@ -35,6 +35,15 @@ def resample(samples: 'np.ndarray', sample_rate: int) -> 'np.ndarray':
 
 class Recorder:
     MAX_SECONDS = 120
+    SPEECH_MAX_SECONDS = 30
+    ONSET_TIMEOUT = 5
+    SILENCE_SECONDS = .8
+    SPEECH_THRESHOLD = .012
+    PRE_ROLL_SECONDS = .3
+
+    def __init__(self) -> None:
+        self.level_callback: Callable[[float], None] | None = None
+        self.end_of_speech = False
 
     def record(self, device: int | None, stop: Event, cancel: Event,
                started: Callable[[], None]) -> 'np.ndarray | None':
@@ -46,23 +55,53 @@ class Recorder:
         info = sd.query_devices(device, 'input')
         sample_rate = int(info['default_samplerate'])
         sd.check_input_settings(device=device, channels=1, dtype='float32', samplerate=sample_rate)
+        from collections import deque
         chunks: list[np.ndarray] = []
+        pre_roll = deque()
+        pre_count = 0
+        heard_speech = False
+        silence_count = 0
+        elapsed_count = 0
+        level_count = 0
         count = 0
         overflow = False
-        limit = sample_rate * self.MAX_SECONDS
+        auto_end = self.end_of_speech
+        limit = sample_rate * (self.SPEECH_MAX_SECONDS if auto_end else self.MAX_SECONDS)
 
         def callback(indata: np.ndarray, frames: int, time_info: object, status: object) -> None:
-            nonlocal count, overflow
+            nonlocal count, overflow, pre_count, heard_speech, silence_count, elapsed_count, level_count
             if status:
                 overflow = True
             if stop.is_set() or cancel.is_set():
                 return
+            rms = float(np.sqrt(np.mean(np.square(indata[:, 0], dtype=np.float64))))
+            level_count += frames
+            if self.level_callback and level_count >= sample_rate / 10:
+                level_count = 0
+                self.level_callback(max(0., min(1., rms)))
+            elapsed_count += frames
+            if auto_end:
+                if not heard_speech:
+                    if rms >= self.SPEECH_THRESHOLD:
+                        heard_speech = True
+                        chunks.extend(pre_roll)
+                        count = pre_count
+                        pre_roll.clear()
+                    else:
+                        pre_roll.append(indata[:, 0].copy())
+                        pre_count += frames
+                        while pre_roll and pre_count > sample_rate * self.PRE_ROLL_SECONDS:
+                            pre_count -= pre_roll.popleft().size
+                        if elapsed_count >= sample_rate * self.ONSET_TIMEOUT:
+                            stop.set()
+                        return
+                silence_count = silence_count + frames if rms < self.SPEECH_THRESHOLD else 0
             remaining = limit - count
             if remaining > 0:
                 chunk = indata[:remaining, 0].copy()
                 chunks.append(chunk)
                 count += chunk.size
-            if count >= limit:
+            if count >= limit or (auto_end and silence_count >= sample_rate * self.SILENCE_SECONDS):
                 stop.set()
 
         stream = sd.InputStream(device=device, channels=1, samplerate=sample_rate,

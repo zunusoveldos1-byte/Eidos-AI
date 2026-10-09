@@ -81,13 +81,15 @@ def test_editing_suspends_hotkeys_and_empty_field_disables_action(app):
     try:
         config = replace(AppConfig(), translation_repeat_hotkey='')
         assert manager.configure(config)
-        assert set(manager.actions.values()) == {'capture', 'dismiss'}
+        assert set(manager.actions.values()) == {'capture', 'dismiss', 'voice'}
         editor = QKeySequenceEdit(owner)
         manager._focus_changed(None, editor)
         assert not registry.active
         manager._application_state(Qt.ApplicationState.ApplicationInactive)
-        assert len(registry.active) == 2
+        assert len(registry.active) == 3
         assert manager.configure(replace(config, translation_hotkeys_enabled=False))
+        assert set(manager.actions.values()) == {'voice'}
+        assert manager.configure(replace(config, translation_hotkeys_enabled=False, voice_hotkey_enabled=False))
         assert not registry.active
     finally:
         manager.shutdown()

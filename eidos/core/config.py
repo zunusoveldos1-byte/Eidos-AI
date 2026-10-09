@@ -33,8 +33,42 @@ class AppConfig:
     translation_source_language: str = 'auto'
     translation_target_language: str = 'ru'
     translation_show_overlay: bool = True
+    translation_provider: str = 'google'
+    close_to_tray: bool = False
+    voice_hotkey_enabled: bool = True
+    voice_hotkey: str = 'Ctrl+Alt+V'
+    floating_enabled: bool = False
+    floating_pinned: bool = True
+    floating_x: int = 80
+    floating_y: int = 80
+    reduce_animations: bool = False
+    tts_provider: str = 'edge'
+    tts_rate: int = 0
+    tts_volume: int = 80
+    sapi_voice: str = ''
+    voice_response_brief: bool = True
+    wake_word_enabled: bool = False
+    wake_keyword_path: str = ''
+    wake_model_path: str = ''
+    wake_sensitivity: float = 0.5
 
     def validate(self) -> None:
+        for name in ('close_to_tray', 'voice_hotkey_enabled', 'floating_enabled', 'floating_pinned',
+                     'reduce_animations', 'voice_response_brief', 'wake_word_enabled'):
+            if type(getattr(self, name)) is not bool:
+                raise ValueError('Некорректный переключатель: ' + name)
+        for name, lower, upper in [('tts_rate', -50, 100), ('tts_volume', 0, 100),
+                                   ('floating_x', -100000, 100000), ('floating_y', -100000, 100000)]:
+            value = getattr(self, name)
+            if type(value) is not int or not lower <= value <= upper:
+                raise ValueError('Некорректное значение: ' + name)
+        if self.tts_provider not in ('edge', 'sapi') or self.translation_provider not in ('', 'google'):
+            raise ValueError('Неизвестный провайдер')
+        if type(self.wake_sensitivity) not in (float, int) or not 0 <= self.wake_sensitivity <= 1:
+            raise ValueError('Чувствительность должна быть от 0 до 1')
+        for name in ('sapi_voice', 'wake_keyword_path', 'wake_model_path'):
+            if not isinstance(getattr(self, name), str):
+                raise ValueError('Ожидалась строка: ' + name)
         if self.microphone is not None and (type(self.microphone) is not int or self.microphone < 0):
             raise ValueError('Некорректный номер микрофона')
         if self.microphone_name is not None and not isinstance(self.microphone_name, str):

@@ -23,10 +23,13 @@ class VoiceWorker(QObject):
     devices = pyqtSignal(object)
     devices_error = pyqtSignal(str)
     agent_progress = pyqtSignal(str, str)
+    level = pyqtSignal(float)
 
     def __init__(self, recorder: Any = None, stt: Any = None, tts: Any = None) -> None:
         super().__init__()
         self.recorder = recorder or Recorder()
+        if hasattr(self.recorder, 'level_callback'):
+            self.recorder.level_callback = self.level.emit
         self.stt = stt or WhisperSTT()
         self.tts = tts or EdgeTTS()
         self.commands = CommandHandler()

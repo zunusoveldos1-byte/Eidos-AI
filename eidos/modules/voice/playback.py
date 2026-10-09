@@ -19,6 +19,12 @@ class AudioPlayback(QObject):
         self._cleanup_timer = QTimer(self)
         self._cleanup_timer.setInterval(200)
         self._cleanup_timer.timeout.connect(self._retry_cleanup)
+        self.volume = 0.8
+
+    def set_volume(self, percent: int) -> None:
+        self.volume = max(0, min(100, percent)) / 100
+        if self._output is not None:
+            self._output.setVolume(self.volume)
 
     @property
     def active(self) -> bool:
@@ -32,6 +38,7 @@ class AudioPlayback(QObject):
 
             if self._player is None:
                 self._output = QAudioOutput(self)
+                self._output.setVolume(self.volume)
                 self._player = QMediaPlayer(self)
                 self._player.setAudioOutput(self._output)
                 self._player.mediaStatusChanged.connect(self._media_status)

@@ -78,7 +78,9 @@ def test_settings_draft_save_reset_and_voice_sync(app, tmp_path, monkeypatch):
 
 
 def test_voice_real_signal_binding_and_copy(app, tmp_path):
-    window = MainWindow(ConfigStore(tmp_path / 'config.json'))
+    store = ConfigStore(tmp_path / 'config.json')
+    store.save(AppConfig(speak=False))
+    window = MainWindow(store)
     try:
         wait_until(app, lambda: not window.controller.discovering)
         window.controller.transcript.emit('Проверка настоящего сигнала')
