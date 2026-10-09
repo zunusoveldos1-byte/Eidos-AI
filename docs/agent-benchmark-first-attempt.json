@@ -1,0 +1,65 @@
+{
+  "hardware_before": {
+    "ram_total_gib": 15.73,
+    "ram_available_gib": 1.54,
+    "disk_free_gib": 101.68,
+    "cpu_threads": 12,
+    "gpu": [
+      {
+        "name": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+        "vram_total_mib": 6144,
+        "vram_free_mib": 5102,
+        "driver": "617.42"
+      }
+    ],
+    "cpu": {
+      "Name": "12th Gen Intel(R) Core(TM) i5-12450HX",
+      "NumberOfCores": 8,
+      "NumberOfLogicalProcessors": 12
+    },
+    "gpu_acceleration": true,
+    "display_adapters": [
+      {
+        "Name": "NVIDIA GeForce RTX 3050 6GB Laptop GPU"
+      },
+      {
+        "Name": "Intel(R) UHD Graphics"
+      }
+    ]
+  },
+  "model": "qwen3:4b",
+  "context": 4096,
+  "think": false,
+  "runs": [],
+  "error": "ConnectionError: Ollama не отвечает. Запустите локальный сервис и загрузите модель.",
+  "peak_ollama_rss_mib": 84.86,
+  "minimum_available_ram_gib": 0.45,
+  "hardware_after": {
+    "ram_total_gib": 15.73,
+    "ram_available_gib": 1.61,
+    "disk_free_gib": 101.66,
+    "cpu_threads": 12,
+    "gpu": [
+      {
+        "name": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+        "vram_total_mib": 6144,
+        "vram_free_mib": 5111,
+        "driver": "617.42"
+      }
+    ],
+    "cpu": {
+      "Name": "12th Gen Intel(R) Core(TM) i5-12450HX",
+      "NumberOfCores": 8,
+      "NumberOfLogicalProcessors": 12
+    },
+    "gpu_acceleration": true,
+    "display_adapters": [
+      {
+        "Name": "NVIDIA GeForce RTX 3050 6GB Laptop GPU"
+      },
+      {
+        "Name": "Intel(R) UHD Graphics"
+      }
+    ]
+  }
+}

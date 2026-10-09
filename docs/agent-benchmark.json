@@ -1,0 +1,157 @@
+{
+  "hardware_before": {
+    "ram_total_gib": 15.73,
+    "ram_available_gib": 1.96,
+    "disk_free_gib": 99.27,
+    "cpu_threads": 12,
+    "gpu": [
+      {
+        "name": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+        "vram_total_mib": 6144,
+        "vram_free_mib": 5436,
+        "driver": "617.42"
+      }
+    ],
+    "cpu": {
+      "Name": "12th Gen Intel(R) Core(TM) i5-12450HX",
+      "NumberOfCores": 8,
+      "NumberOfLogicalProcessors": 12
+    },
+    "gpu_acceleration": true,
+    "display_adapters": [
+      {
+        "Name": "NVIDIA GeForce RTX 3050 6GB Laptop GPU"
+      },
+      {
+        "Name": "Intel(R) UHD Graphics"
+      }
+    ]
+  },
+  "model": "qwen3:4b-instruct-2507-q4_K_M",
+  "context": 4096,
+  "think": false,
+  "runs": [
+    {
+      "prompt": "Поздоровайся на русском языке одной короткой фразой.",
+      "seconds": 5.745,
+      "response": {
+        "role": "assistant",
+        "content": "Здравствуйте!"
+      },
+      "tool_verified": null,
+      "metrics": {
+        "total_duration": 5372412700,
+        "load_duration": 5037968700,
+        "prompt_eval_count": 29,
+        "prompt_eval_duration": 132047000,
+        "eval_count": 8,
+        "eval_duration": 185314000,
+        "wall_seconds": 5.734
+      }
+    },
+    {
+      "prompt": "Для просмотра локального календаря вызови calendar_list. Не отвечай без инструмента.",
+      "seconds": 0.529,
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "xFJyrlXsz0r9KanJjV09Y6FGhsl2BnMG",
+            "function": {
+              "index": 0,
+              "name": "calendar_list",
+              "arguments": {}
+            }
+          }
+        ]
+      },
+      "tool_verified": true,
+      "metrics": {
+        "total_duration": 509204600,
+        "load_duration": 13701800,
+        "prompt_eval_count": 175,
+        "prompt_eval_duration": 111783000,
+        "eval_count": 16,
+        "eval_duration": 358918000,
+        "wall_seconds": 0.515
+      }
+    },
+    {
+      "prompt": "Объясни в двух предложениях, чем список Python отличается от кортежа.",
+      "seconds": 1.916,
+      "response": {
+        "role": "assistant",
+        "content": "Список в Python является изменяемым, что означает, что его элементы можно добавлять, удалять или изменять после создания. Кортеж, в свою очередь, неизменяем (неизменяемый), поэтому его элементы нельзя изменять, добавлять или удалять после инициализации."
+      },
+      "tool_verified": null,
+      "metrics": {
+        "total_duration": 1900460500,
+        "load_duration": 9001900,
+        "prompt_eval_count": 28,
+        "prompt_eval_duration": 39123000,
+        "eval_count": 77,
+        "eval_duration": 1827334000,
+        "wall_seconds": 1.922
+      }
+    }
+  ],
+  "running_models": {
+    "models": [
+      {
+        "name": "qwen3:4b-instruct-2507-q4_K_M",
+        "model": "qwen3:4b-instruct-2507-q4_K_M",
+        "size": 3178149969,
+        "digest": "0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "qwen3",
+          "families": [
+            "qwen3"
+          ],
+          "parameter_size": "4.0B",
+          "quantization_level": "Q4_K_M"
+        },
+        "expires_at": "2026-10-10T01:28:16.9504391+06:00",
+        "size_vram": 3178149969,
+        "context_length": 4096,
+        "runner": "llamacpp"
+      }
+    ]
+  },
+  "harness_calendar": "[]\n\nОтвет модели:\nЛокальный календарь пуст. В данный момент нет событий.",
+  "harness_seconds": 1.69,
+  "cancelled": true,
+  "cancellation_seconds": 0.531,
+  "peak_ollama_rss_mib": 1050.42,
+  "minimum_available_ram_gib": 1.02,
+  "hardware_after": {
+    "ram_total_gib": 15.73,
+    "ram_available_gib": 1.02,
+    "disk_free_gib": 99.27,
+    "cpu_threads": 12,
+    "gpu": [
+      {
+        "name": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+        "vram_total_mib": 6144,
+        "vram_free_mib": 2307,
+        "driver": "617.42"
+      }
+    ],
+    "cpu": {
+      "Name": "12th Gen Intel(R) Core(TM) i5-12450HX",
+      "NumberOfCores": 8,
+      "NumberOfLogicalProcessors": 12
+    },
+    "gpu_acceleration": true,
+    "display_adapters": [
+      {
+        "Name": "NVIDIA GeForce RTX 3050 6GB Laptop GPU"
+      },
+      {
+        "Name": "Intel(R) UHD Graphics"
+      }
+    ]
+  }
+}

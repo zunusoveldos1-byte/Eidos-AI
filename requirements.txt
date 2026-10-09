@@ -1,1 +1,1 @@
--e .[voice]
+-e .[voice,agent]

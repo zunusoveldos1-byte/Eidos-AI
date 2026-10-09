@@ -1,0 +1,16 @@
+{
+  "provider": "ollama",
+  "model": "qwen3:4b-instruct-2507-q4_K_M",
+  "ollama_url": "http://127.0.0.1:11434",
+  "context_size": 4096,
+  "memory_enabled": false,
+  "timezone": "Asia/Bishkek",
+  "telegram_enabled": false,
+  "discord_enabled": false,
+  "telegram_users": [],
+  "telegram_channels": [],
+  "discord_users": [],
+  "discord_channels": [],
+  "remote_permissions": [],
+  "approved_apps": {}
+}

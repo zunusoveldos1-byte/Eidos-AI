@@ -22,6 +22,7 @@ class VoiceWorker(QObject):
     finished = pyqtSignal()
     devices = pyqtSignal(object)
     devices_error = pyqtSignal(str)
+    agent_progress = pyqtSignal(str, str)
 
     def __init__(self, recorder: Any = None, stt: Any = None, tts: Any = None) -> None:
         super().__init__()
@@ -56,6 +57,7 @@ class VoiceWorker(QObject):
             if self.cancel_event.is_set():
                 return
             self.transcript.emit(text)
+            stage = 'agent'
             answer = self.commands.handle(text)
             self.reply.emit(answer)
             if config.speak and text and not self.cancel_event.is_set():
@@ -69,10 +71,14 @@ class VoiceWorker(QObject):
             if not self.cancel_event.is_set():
                 if isinstance(exc, ValueError) and stage == 'stt':
                     message = str(exc)
+                elif stage == 'agent' and isinstance(exc, (ValueError, PermissionError, TimeoutError, ConnectionError, RuntimeError)):
+                    from eidos.agent.memory import redact_secrets
+                    message = redact_secrets(str(exc))[:1000]
                 else:
                     message = {
                         'recording': 'Не удалось открыть или записать микрофон. Проверьте устройство и разрешения Windows.',
                         'stt': 'Не удалось загрузить модель или распознать речь. Для первой загрузки нужен интернет; проверьте настройки CPU/CUDA.',
+                        'agent': 'Не удалось обработать команду. Проверьте модель / подключение в разделе «Ассистент».',
                         'tts': 'Не удалось озвучить ответ. Проверьте интернет. Текст ответа доступен выше.',
                     }[stage]
                 self.error.emit(message)

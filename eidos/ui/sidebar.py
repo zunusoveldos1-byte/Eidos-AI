@@ -34,6 +34,14 @@ class Sidebar(QWidget):
                 layout.addSpacing(16)
                 layout.addWidget(label('  Разделы', 'muted'))
             if index == 4:
+                assistant = button('  Ассистент', 'message')
+                assistant.setObjectName('nav')
+                assistant.setCheckable(True)
+                assistant.setAccessibleName('Ассистент')
+                assistant.setToolTip('Диалог, память, skills и подключения')
+                self.group.addButton(assistant, 5)
+                self.assistant_button = assistant
+                layout.addWidget(assistant)
                 layout.addStretch()
                 self.mascot = Mascot(130)
                 layout.addWidget(self.mascot)
@@ -51,6 +59,13 @@ class Sidebar(QWidget):
         self.activate(0)
 
     def activate(self, index: int) -> None:
-        self.buttons[index].setChecked(True)
+        (self.assistant_button if index == 5 else self.buttons[index]).setChecked(True)
+        self.assistant_button.setIcon(icon('message', ACCENT if index == 5 else SECONDARY))
         for item, widget in enumerate(self.buttons):
             widget.setIcon(icon(ICONS[item], ACCENT if item == index else SECONDARY))
+
+    def resizeEvent(self, event) -> None:
+        # Keep navigation available on short/high-DPI screens. The brand mascot
+        # remains visible; the lower decorative illustration needs spare room.
+        self.mascot.setVisible(self.height() >= 740)
+        super().resizeEvent(event)

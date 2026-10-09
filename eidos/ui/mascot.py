@@ -1,7 +1,7 @@
 """Transparent local mascot with four states and finite, optional animation."""
 from functools import lru_cache
 from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, QRectF, QSize, Qt, pyqtProperty
-from PyQt6.QtGui import QPainter, QPixmap
+from PyQt6.QtGui import QPainter, QPixmap, QColor, QPen
 from PyQt6.QtWidgets import QSizePolicy, QWidget
 from .theme import ASSETS
 
@@ -52,11 +52,11 @@ class Mascot(QWidget):
             self.offset = 0.0
 
     def set_state(self, state: str) -> None:
-        if state not in frames():
+        if state not in frames() and state != 'acting':
             raise ValueError(f'Unknown mascot state: {state}')
         changed = state != self.state
         self.state = state
-        descriptions = {'ready': 'готов', 'listening': 'слушает', 'thinking': 'думает', 'error': 'ошибка'}
+        descriptions = {'ready': 'готов', 'listening': 'слушает', 'thinking': 'думает', 'error': 'ошибка', 'acting': 'выполняет действие'}
         self.setAccessibleName(f'Маскот Eidos: {descriptions[state]}')
         self.update()
         if changed and self.animations_enabled and self.isVisible():
@@ -73,5 +73,8 @@ class Mascot(QWidget):
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
         size = min(self.width(), self.height())
         rect = QRectF((self.width() - size) / 2, (self.height() - size) / 2 + self._offset, size, size)
-        frame = frames()[self.state]
+        frame = frames()['thinking' if self.state == 'acting' else self.state]
         painter.drawPixmap(rect, frame, QRectF(frame.rect()))
+        if self.state == 'acting':
+            painter.setPen(QPen(QColor('#2FE09B'), 3))
+            painter.drawArc(rect.adjusted(3, 3, -3, -3), 30 * 16, 270 * 16)

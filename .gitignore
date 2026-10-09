@@ -10,6 +10,11 @@ dist/
 *.mp3
 *.wav
 config.json
+agent.json
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
 
 artifacts/
 bin/

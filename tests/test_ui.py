@@ -56,12 +56,12 @@ def test_controller_prevents_repeat_and_closes_recording(app, tmp_path):
 def test_window_smoke_and_config_save(app, tmp_path):
     window = MainWindow(ConfigStore(tmp_path / 'config.json'))
     window.show()
-    assert window.pages.count() == 5
+    assert window.pages.count() == 6
     assert [button.accessibleName() for button in window.sidebar.buttons] == ['Главная', 'Голос', 'Жесты', 'Перевод', 'Настройки']
     window.voice.speak.setChecked(False)
     assert ConfigStore(tmp_path / 'config.json').load().speak is False
     window.close()
-    wait_until(app, lambda: not window.controller.thread.isRunning())
+    wait_until(app, lambda: not window.controller.thread.isRunning() and not window.agent_controller.thread.isRunning())
     app.processEvents()
 
 

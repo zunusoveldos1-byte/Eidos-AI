@@ -12,7 +12,7 @@ from test_ui import app, wait_until
 
 def close_window(window, app):
     window.close()
-    wait_until(app, lambda: not window.controller.thread.isRunning())
+    wait_until(app, lambda: not window.controller.thread.isRunning() and not window.agent_controller.thread.isRunning())
     app.processEvents()
 
 
@@ -29,7 +29,7 @@ def test_navigation_and_future_actions_disabled(app, tmp_path):
     window = MainWindow(ConfigStore(tmp_path / 'config.json'))
     try:
         assert isinstance(window.pages, QStackedWidget)
-        assert window.pages.count() == 5
+        assert window.pages.count() == 6
         for index, button in enumerate(window.sidebar.buttons):
             button.click()
             assert window.pages.currentIndex() == index
@@ -38,6 +38,8 @@ def test_navigation_and_future_actions_disabled(app, tmp_path):
         assert not window.translation.select_button.isEnabled()
         window.home.voice_button.click()
         assert window.pages.currentIndex() == 1
+        window.sidebar.assistant_button.click()
+        assert window.pages.currentIndex() == 5
     finally:
         close_window(window, app)
 

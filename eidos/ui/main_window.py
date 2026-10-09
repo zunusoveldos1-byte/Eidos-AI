@@ -1,4 +1,4 @@
-"""Five-page shell; voice engine coordination stays in the existing controller."""
+"""Original five pages and assistant workspace; controllers own background work."""
 from dataclasses import replace
 from datetime import datetime
 import logging
@@ -20,13 +20,17 @@ from .pages.translation import TranslationPage
 from .pages.settings import SettingsPage
 from .sidebar import Sidebar
 from .theme import STYLE, install_font
+from eidos.agent.service import AgentService
+from .pages.assistant import AssistantPage
+from .assistant_bindings import AssistantBindings
 
-class MainWindow(QMainWindow):
+class MainWindow(AssistantBindings, QMainWindow):
     def __init__(self, store: ConfigStore | None = None) -> None:
         super().__init__()
         install_font()
         self.store = store or ConfigStore()
         self.config = self.store.load()
+        self.agent_service = AgentService(self.store.path.parent)
         self._allow_close = False
         self._microphones: list[Microphone] = []
         self._updating = False
@@ -60,12 +64,13 @@ class MainWindow(QMainWindow):
         self.settings.load(self.config)
         self._apply_preferences()
         self.navigate(0)
-        for index in range(5):
+        for index in range(self.pages.count()):
             shortcut = QShortcut(QKeySequence(f'Ctrl+{index + 1}'), self)
             shortcut.activated.connect(lambda page=index: self.navigate(page))
         if self.store.warning:
             self._log(self.store.warning)
         self._log('Eidos готов. Микрофон включается только по кнопке. Лимит записи — 120 секунд.')
+        self._init_agent(show_onboarding=store is None)
         QTimer.singleShot(0, self._refresh)
 
     def _build_ui(self) -> None:
@@ -92,6 +97,8 @@ class MainWindow(QMainWindow):
         self.settings = SettingsPage()
         for page in (self.home, self.voice, self.gestures, self.translation, self.settings):
             self.pages.addWidget(page)
+        self.assistant = AssistantPage(self.agent_service)
+        self.pages.addWidget(self.assistant)
         content.addWidget(self.pages, 1)
         layout.addWidget(right, 1)
 
@@ -259,11 +266,12 @@ class MainWindow(QMainWindow):
 
     def _update_controls(self) -> None:
         busy = self.controller.active or self.controller.playback.active
+        agent_busy = hasattr(self, 'agent_controller') and self.agent_controller.active
         unavailable = self.controller.closing or self.controller.discovering
         can_start = bool(self._microphones) and self.voice.microphone.currentData() != -1
-        self.voice.action_button.setEnabled(not unavailable and not self.controller.cancelling and (busy or can_start))
+        self.voice.action_button.setEnabled(not agent_busy and not unavailable and not self.controller.cancelling and (busy or can_start))
         for control in (self.voice.microphone, self.voice.speak, self.settings.content):
-            control.setEnabled(not busy and not unavailable)
+            control.setEnabled(not busy and not agent_busy and not unavailable)
         self.voice.refresh_button.setEnabled(not busy and not unavailable)
         self.settings.save_button.setEnabled(not busy and not unavailable)
         self.settings.reset_button.setEnabled(not busy and not unavailable)
@@ -276,6 +284,8 @@ class MainWindow(QMainWindow):
         self.home.status.setText('●  ' + message)
         self.sidebar.logo.set_state(self.voice.mascot.state)
         self._update_controls()
+        if hasattr(self, 'agent_controller'):
+            self._agent_controls()
 
     @pyqtSlot()
     def _action(self) -> None:
@@ -301,6 +311,10 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot()
     def _closed(self) -> None:
+        if hasattr(self, 'agent_controller') and self.agent_controller.thread.isRunning():
+            return
+        if self.controller.thread.isRunning():
+            return
         self._allow_close = True
         QTimer.singleShot(0, self.close)
 
@@ -309,4 +323,5 @@ class MainWindow(QMainWindow):
             event.accept()
         else:
             event.ignore()
+            self._shutdown_agent()
             self.controller.shutdown()

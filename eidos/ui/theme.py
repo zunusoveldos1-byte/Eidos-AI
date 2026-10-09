@@ -73,4 +73,15 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
 QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }
 QToolTip { background: #22372B; color: #F2F6F3; border: 1px solid #456753; padding: 6px; }
 QMessageBox { background: #151B18; }
+QLineEdit, QSpinBox, QDateTimeEdit { background: #19211C; color: #F2F6F3; border: 1px solid #35453C; border-radius: 8px; padding: 9px; }
+QLineEdit:focus, QPlainTextEdit:focus { border-color: #2FE09B; }
+QListWidget { background: #151E18; border: 1px solid #35453C; border-radius: 8px; padding: 8px; }
+QListWidget::item { padding: 8px; }
+QListWidget::item:selected { background: #1B3428; color: #2FE09B; }
+QTabWidget::pane { border: 1px solid #29362F; border-radius: 10px; }
+QTabBar::tab { background: #151E18; color: #A8B7AE; padding: 11px 14px; }
+QTabBar::tab:selected { background: #1B3428; color: #2FE09B; border-bottom: 2px solid #2FE09B; }
+QCheckBox { spacing: 9px; }
+QDialog { background: #101713; }
+QPlainTextEdit#conversation { font-size: 14px; padding: 12px; }
 '''.replace('__CHEVRON__', (ASSETS / 'icons' / 'chevron.svg').as_posix())

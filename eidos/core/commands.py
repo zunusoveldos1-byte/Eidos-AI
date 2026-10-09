@@ -6,7 +6,7 @@ from typing import Callable, Protocol
 
 
 class AssistantProvider(Protocol):
-    """Future Ollama/OpenAI adapter; called only by a background worker."""
+    """Voice bridge to an assistant provider, called only by a background worker."""
 
     def respond(self, text: str) -> str: ...
 
@@ -37,5 +37,8 @@ class CommandHandler:
             today = self.now()
             return f'Сегодня {today.day} {self.MONTHS[today.month - 1]} {today.year} года.'
         if normalized in {'помощь', 'команды', 'что ты умеешь'}:
-            return 'Доступные команды: «Привет», «Который час?», «Какая сегодня дата?», «Помощь».'
+            return ('Доступные команды: «Привет», «Который час?», «Какая сегодня дата?», «Помощь». '
+                    'В приложении также: «Открой настройки», «Открой настройки звука», '
+                    '«Сделай громкость 30 процентов», «Увеличь громкость», «Уменьши громкость», '
+                    '«Выключи звук», «Включи звук». Свободный диалог — с подключённой моделью.')
         return self.provider.respond(text)

@@ -1,0 +1,107 @@
+[
+  {
+    "page": "chat",
+    "logical_size": [
+      800,
+      600
+    ],
+    "pixels": [
+      1000,
+      750
+    ],
+    "dpr": 1.25,
+    "horizontal_scroll": 0,
+    "viewport_width": 508,
+    "content_width": 508
+  },
+  {
+    "page": "memory",
+    "logical_size": [
+      800,
+      600
+    ],
+    "pixels": [
+      1000,
+      750
+    ],
+    "dpr": 1.25,
+    "horizontal_scroll": 0,
+    "viewport_width": 508,
+    "content_width": 508
+  },
+  {
+    "page": "calendar",
+    "logical_size": [
+      800,
+      600
+    ],
+    "pixels": [
+      1000,
+      750
+    ],
+    "dpr": 1.25,
+    "horizontal_scroll": 0,
+    "viewport_width": 508,
+    "content_width": 508
+  },
+  {
+    "page": "skills",
+    "logical_size": [
+      800,
+      600
+    ],
+    "pixels": [
+      1000,
+      750
+    ],
+    "dpr": 1.25,
+    "horizontal_scroll": 0,
+    "viewport_width": 508,
+    "content_width": 508
+  },
+  {
+    "page": "connections",
+    "logical_size": [
+      800,
+      600
+    ],
+    "pixels": [
+      1000,
+      750
+    ],
+    "dpr": 1.25,
+    "horizontal_scroll": 0,
+    "viewport_width": 508,
+    "content_width": 508
+  },
+  {
+    "page": "model",
+    "logical_size": [
+      800,
+      600
+    ],
+    "pixels": [
+      1000,
+      750
+    ],
+    "dpr": 1.25,
+    "horizontal_scroll": 0,
+    "viewport_width": 508,
+    "content_width": 508
+  },
+  {
+    "page": "profile",
+    "logical_size": [
+      800,
+      600
+    ],
+    "pixels": [
+      1000,
+      750
+    ],
+    "dpr": 1.25,
+    "horizontal_scroll": 0,
+    "viewport_width": 508,
+    "content_width": 508
+  }
+]

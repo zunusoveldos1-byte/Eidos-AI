@@ -1,0 +1,28 @@
+{
+  "ram_total_gib": 15.73,
+  "ram_available_gib": 1.59,
+  "disk_free_gib": 105.93,
+  "cpu_threads": 12,
+  "gpu": [
+    {
+      "name": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+      "vram_total_mib": 6144,
+      "vram_free_mib": 5418,
+      "driver": "617.42"
+    }
+  ],
+  "cpu": {
+    "Name": "12th Gen Intel(R) Core(TM) i5-12450HX",
+    "NumberOfCores": 8,
+    "NumberOfLogicalProcessors": 12
+  },
+  "gpu_acceleration": true,
+  "display_adapters": [
+    {
+      "Name": "NVIDIA GeForce RTX 3050 6GB Laptop GPU"
+    },
+    {
+      "Name": "Intel(R) UHD Graphics"
+    }
+  ]
+}
