@@ -129,7 +129,11 @@ class VoiceController(QObject):
         self.active = False
         if self.closing:
             return
-        if self.machine.state == State.ERROR:
+        cancelled = self.cancelling
+        self.cancelling = False
+        if cancelled:
+            self._set_state(State.IDLE, 'Обработка отменена. Можно начать новую запись.')
+        elif self.machine.state == State.ERROR:
             # Keep the useful error message until the next explicit action.
             self.machine.transition(State.IDLE)
             self.state_changed.emit('idle', 'Ошибка. Можно повторить запись; подробности в журнале.')
