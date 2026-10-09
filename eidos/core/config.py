@@ -26,6 +26,13 @@ class AppConfig:
     tts_voice: str = 'ru-RU-SvetlanaNeural'
     always_on_top: bool = False
     mascot_animation: bool = True
+    translation_hotkeys_enabled: bool = True
+    translation_capture_hotkey: str = 'Ctrl+Alt+T'
+    translation_repeat_hotkey: str = 'Ctrl+Alt+R'
+    translation_dismiss_hotkey: str = 'Ctrl+Alt+X'
+    translation_source_language: str = 'auto'
+    translation_target_language: str = 'ru'
+    translation_show_overlay: bool = True
 
     def validate(self) -> None:
         if self.microphone is not None and (type(self.microphone) is not int or self.microphone < 0):
@@ -38,6 +45,15 @@ class AppConfig:
             raise ValueError('Некорректные настройки озвучивания')
         if type(self.always_on_top) is not bool or type(self.mascot_animation) is not bool:
             raise ValueError('Некорректные настройки внешнего вида')
+        if type(self.translation_hotkeys_enabled) is not bool:
+            raise ValueError('Некорректная настройка горячих клавиш.')
+        from .shortcuts import configured_shortcuts
+        configured_shortcuts(self)
+        from .languages import LANGUAGE_CODES
+        if (self.translation_source_language not in LANGUAGE_CODES | {'auto'}
+                or self.translation_target_language not in LANGUAGE_CODES
+                or type(self.translation_show_overlay) is not bool):
+            raise ValueError('Некорректные настройки перевода.')
 
 
 class ConfigStore:

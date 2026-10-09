@@ -8,7 +8,21 @@ version = "0.1.0"
 description = "Персональный настольный ассистент Eidos"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
-dependencies = ["PyQt6>=6.8,<7", "tzdata>=2025"]
+dependencies = [
+    "PyQt6>=6.8,<7",
+    "tzdata>=2025",
+    "Pillow>=11,<13",
+    "tesserocr @ https://github.com/simonflueckiger/tesserocr-windows_build/releases/download/tesserocr-v2.10.0-tesseract-5.5.2/tesserocr-2.10.0-cp311-cp311-win_amd64.whl ; sys_platform == 'win32' and python_version == '3.11' and platform_machine == 'AMD64'",
+    "tesserocr @ https://github.com/simonflueckiger/tesserocr-windows_build/releases/download/tesserocr-v2.10.0-tesseract-5.5.2/tesserocr-2.10.0-cp312-cp312-win_amd64.whl ; sys_platform == 'win32' and python_version == '3.12' and platform_machine == 'AMD64'",
+    "winrt-runtime>=3.2,<4; sys_platform == 'win32'",
+    "winrt-Windows.Foundation>=3.2,<4; sys_platform == 'win32'",
+    "winrt-Windows.Foundation.Collections>=3.2,<4; sys_platform == 'win32'",
+    "winrt-Windows.Globalization>=3.2,<4; sys_platform == 'win32'",
+    "winrt-Windows.Graphics.Imaging>=3.2,<4; sys_platform == 'win32'",
+    "winrt-Windows.Media.Ocr>=3.2,<4; sys_platform == 'win32'",
+    "winrt-Windows.Storage>=3.2,<4; sys_platform == 'win32'",
+    "winrt-Windows.Storage.Streams>=3.2,<4; sys_platform == 'win32'",
+]
 
 [project.optional-dependencies]
 voice = ["numpy>=1.26,<3", "sounddevice>=0.5,<0.6", "faster-whisper>=1.1,<2", "edge-tts>=7,<8"]

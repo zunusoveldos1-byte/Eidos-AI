@@ -47,7 +47,7 @@ class HomePage(Page):
             picture.setPixmap(icon(image, ACCENT if index == 1 else '#A8B7AE', 38).pixmap(38, 38))
             head.addWidget(picture)
             head.addWidget(label(name, 'h2'), 1)
-            if index != 1:
+            if index == 2:
                 head.addWidget(label('Скоро', 'soon'))
             card.body.addLayout(head)
             card.body.addWidget(label(text, 'secondary'))

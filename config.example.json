@@ -6,5 +6,12 @@
   "speak": true,
   "tts_voice": "ru-RU-SvetlanaNeural",
   "always_on_top": false,
-  "mascot_animation": true
+  "mascot_animation": true,
+  "translation_hotkeys_enabled": true,
+  "translation_capture_hotkey": "Ctrl+Alt+T",
+  "translation_repeat_hotkey": "Ctrl+Alt+R",
+  "translation_dismiss_hotkey": "Ctrl+Alt+X",
+  "translation_source_language": "auto",
+  "translation_target_language": "ru",
+  "translation_show_overlay": true
 }

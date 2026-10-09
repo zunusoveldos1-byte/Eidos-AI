@@ -1,5 +1,6 @@
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
+from PyQt6.QtGui import QKeySequence
+from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget, QKeySequenceEdit
 from eidos.core.config import AppConfig, MODELS
 from ..components import Card, Page, ResponsiveRow, Toggle, button, combo, label, setting_row
 
@@ -34,6 +35,20 @@ class SettingsPage(Page):
         self.tts_voice.addItem('Дмитрий', 'ru-RU-DmitryNeural')
         voice.body.addWidget(setting_row('Голос', self.tts_voice))
         self.body.addWidget(ResponsiveRow([general, voice], threshold=690))
+        shortcuts = Card()
+        shortcuts.heading('Горячие клавиши перевода', 'languages')
+        self.hotkeys_enabled = Toggle('Включить горячие клавиши перевода')
+        shortcuts.body.addWidget(setting_row('Включить горячие клавиши', self.hotkeys_enabled))
+        self.capture_hotkey = self._shortcut_editor('Выбрать область и перевести')
+        self.repeat_hotkey = self._shortcut_editor('Обновить снимок выбранной области')
+        self.dismiss_hotkey = self._shortcut_editor('Снять перевод с экрана')
+        shortcuts.body.addWidget(setting_row('Выделить текст и перевести', self.capture_hotkey))
+        shortcuts.body.addWidget(setting_row('Обновить эту область', self.repeat_hotkey))
+        shortcuts.body.addWidget(setting_row('Снять перевод', self.dismiss_hotkey))
+        shortcuts.body.addWidget(label('Нажмите на поле и введите свою комбинацию. Крестик отключает отдельное действие. Изменения применяются кнопкой «Сохранить».', 'muted'))
+        self.hotkeys_status = label('', 'muted')
+        shortcuts.body.addWidget(self.hotkeys_status)
+        self.body.addWidget(shortcuts)
         recognition = Card()
         recognition.heading('Распознавание', 'wave')
         self.model = combo()
@@ -92,6 +107,11 @@ class SettingsPage(Page):
         self.layout().addWidget(footer)
 
     def load(self, config: AppConfig) -> None:
+        self.hotkeys_enabled.setChecked(config.translation_hotkeys_enabled)
+        for control, text in [(self.capture_hotkey, config.translation_capture_hotkey),
+                              (self.repeat_hotkey, config.translation_repeat_hotkey),
+                              (self.dismiss_hotkey, config.translation_dismiss_hotkey)]:
+            control.setKeySequence(QKeySequence.fromString(text, QKeySequence.SequenceFormat.PortableText))
         self.model.setCurrentText(config.whisper_model)
         self.device.setCurrentIndex(self.device.findData(config.device))
         self.speak.setChecked(config.speak)
@@ -103,3 +123,13 @@ class SettingsPage(Page):
             index = self.tts_voice.count() - 1
         self.tts_voice.setCurrentIndex(index)
         self.feedback.setText('')
+
+    @staticmethod
+    def _shortcut_editor(name):
+        control = QKeySequenceEdit()
+        control.setMaximumSequenceLength(1)
+        control.setClearButtonEnabled(True)
+        control.setAccessibleName(name)
+        control.setMinimumWidth(180)
+        control.setStyleSheet('QKeySequenceEdit QLineEdit { background: #151E18; color: #F2F6F3; border: 1px solid #35453C; border-radius: 8px; padding: 10px; } QKeySequenceEdit QLineEdit:focus { border: 2px solid #2FE09B; }')
+        return control

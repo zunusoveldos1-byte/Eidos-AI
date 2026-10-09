@@ -23,6 +23,8 @@ from .theme import STYLE, install_font
 from eidos.agent.service import AgentService
 from .pages.assistant import AssistantPage
 from .assistant_bindings import AssistantBindings
+from .hotkeys import TranslationHotkeys
+from eidos.core.shortcuts import ACTIONS
 
 class MainWindow(AssistantBindings, QMainWindow):
     def __init__(self, store: ConfigStore | None = None) -> None:
@@ -32,6 +34,7 @@ class MainWindow(AssistantBindings, QMainWindow):
         self.config = self.store.load()
         self.agent_service = AgentService(self.store.path.parent)
         self._allow_close = False
+        self._closing = False
         self._microphones: list[Microphone] = []
         self._updating = False
         self.current_state = 'idle'
@@ -51,6 +54,7 @@ class MainWindow(AssistantBindings, QMainWindow):
         self.controller.devices.connect(self._devices)
         self.controller.devices_error.connect(self._devices_error)
         self.controller.closed.connect(self._closed)
+        self.translation.stopped.connect(self._translation_stopped)
         self.sidebar.selected.connect(self.navigate)
         self.home.navigate_requested.connect(self.navigate)
         self.home.compact_requested.connect(lambda: self.set_compact(True))
@@ -62,6 +66,13 @@ class MainWindow(AssistantBindings, QMainWindow):
         self.settings.save_requested.connect(self._save_settings)
         self.settings.reset_requested.connect(self._reset_settings)
         self.settings.load(self.config)
+        self.translation.load_preferences(self.config)
+        self.translation.preferences_changed.connect(self._translation_preferences_changed)
+        self.hotkeys = TranslationHotkeys(self)
+        self.hotkeys.activated.connect(self._translation_hotkey)
+        self.hotkeys.status_changed.connect(self.settings.hotkeys_status.setText)
+        self.hotkeys.status_changed.connect(lambda message: self._update_hotkey_hints())
+        self.hotkeys.configure(self.config)
         self._apply_preferences()
         self.navigate(0)
         for index in range(self.pages.count()):
@@ -131,6 +142,7 @@ class MainWindow(AssistantBindings, QMainWindow):
                 self.restoreGeometry(self._normal_geometry)
 
     def _apply_preferences(self) -> None:
+        self._update_hotkey_hints()
         blocker = QSignalBlocker(self.voice.speak)
         self.voice.speak.setChecked(self.config.speak)
         del blocker
@@ -146,8 +158,17 @@ class MainWindow(AssistantBindings, QMainWindow):
 
     def _persist(self, config: AppConfig) -> bool:
         try:
+            config.validate()
+        except ValueError as exc:
+            self.settings.feedback.setText(str(exc))
+            return False
+        if not self.hotkeys.configure(config):
+            self.settings.feedback.setText(self.hotkeys.message)
+            return False
+        try:
             self.store.save(config)
         except (OSError, ValueError):
+            self.hotkeys.configure(self.config)
             self._log('Не удалось сохранить настройки. Проверьте доступ к папке профиля.')
             self.settings.feedback.setText('Не удалось сохранить настройки.')
             return False
@@ -171,7 +192,11 @@ class MainWindow(AssistantBindings, QMainWindow):
                          device=self.settings.device.currentData(),
                          speak=self.settings.speak.isChecked(), tts_voice=self.settings.tts_voice.currentData(),
                          always_on_top=self.settings.on_top.isChecked(),
-                         mascot_animation=self.settings.animation.isChecked())
+                         mascot_animation=self.settings.animation.isChecked(),
+                         translation_hotkeys_enabled=self.settings.hotkeys_enabled.isChecked(),
+                         translation_capture_hotkey=self.settings.capture_hotkey.keySequence().toString(QKeySequence.SequenceFormat.PortableText),
+                         translation_repeat_hotkey=self.settings.repeat_hotkey.keySequence().toString(QKeySequence.SequenceFormat.PortableText),
+                         translation_dismiss_hotkey=self.settings.dismiss_hotkey.keySequence().toString(QKeySequence.SequenceFormat.PortableText))
         if self._persist(config):
             blocker = QSignalBlocker(self.voice.microphone)
             self.voice.microphone.setCurrentIndex(self.voice.microphone.findData(
@@ -206,6 +231,14 @@ class MainWindow(AssistantBindings, QMainWindow):
             blocker = QSignalBlocker(self.voice.speak)
             self.voice.speak.setChecked(self.config.speak)
             del blocker
+
+    @pyqtSlot(str, str, bool)
+    def _translation_preferences_changed(self, source, target, overlay):
+        config = replace(self.config, translation_source_language=source,
+                         translation_target_language=target, translation_show_overlay=overlay)
+        if not self._persist(config):
+            self.translation.load_preferences(self.config)
+            self.translation.feedback.setText('Не удалось сохранить языки. Проверьте доступ к настройкам.')
 
     @pyqtSlot(int)
     def _voice_microphone_changed(self, index: int) -> None:
@@ -313,15 +346,54 @@ class MainWindow(AssistantBindings, QMainWindow):
     def _closed(self) -> None:
         if hasattr(self, 'agent_controller') and self.agent_controller.thread.isRunning():
             return
-        if self.controller.thread.isRunning():
+        if self.controller.thread.isRunning() or self.translation.is_running:
             return
         self._allow_close = True
         QTimer.singleShot(0, self.close)
+
+    def _translation_stopped(self) -> None:
+        if self._closing:
+            self._closed()
+
+    def _update_hotkey_hints(self):
+        controls = {'capture': self.translation.select_button, 'repeat': self.translation.refresh_button,
+                    'dismiss': self.translation.remove_button}
+        active = set(self.hotkeys.actions.values())
+        hints = []
+        for action, (field, title) in ACTIONS.items():
+            text = getattr(self.config, field)
+            controls[action].setToolTip(f'{title}: {text}' if action in active else title)
+            if action in active:
+                hints.append(f'{title}: {text}')
+        self.translation.hotkey_hint.setText(' · '.join(hints) if hints else 'Горячие клавиши можно настроить в разделе «Настройки».')
+
+    @pyqtSlot(str)
+    def _translation_hotkey(self, action):
+        if self._closing:
+            return
+        if action == 'capture':
+            if not self.translation.is_running and not self.translation._selecting:
+                self.navigate(3)
+                self.translation.start_capture()
+        elif action == 'repeat':
+            if not self.translation.is_running and not self.translation._selecting:
+                self.navigate(3)
+                self.translation.refresh_capture()
+        elif action == 'dismiss':
+            if self.translation._selecting:
+                self.translation._cancel_selection()
+            elif self.translation.is_running:
+                self.translation.cancel_translation()
+            else:
+                self.translation.dismiss_overlay()
 
     def closeEvent(self, event: QCloseEvent) -> None:
         if self._allow_close:
             event.accept()
         else:
             event.ignore()
+            self._closing = True
+            self.hotkeys.shutdown()
+            self.translation.shutdown()
             self._shutdown_agent()
             self.controller.shutdown()
