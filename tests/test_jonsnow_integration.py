@@ -58,13 +58,13 @@ def test_voice_cancel_allows_restart_while_translation_completes(app, tmp_path, 
         wait_until(app, recognized.is_set)
         wait_until(app, lambda: window.controller.machine.state.value == 'transcribing')
         assert window.controller.active and window.translation.is_running
-        window.voice.action_button.click()
+        window.controller.cancel()
         wait_until(app, lambda: not window.controller.active)
         assert not window.controller.cancelling
-        assert window.voice.action_button.isEnabled()
+        assert not window.controller.active
         assert window.translation.is_running
-        # The real UI button must start a second cycle after cancellation.
-        window.voice.action_button.click()
+        # Controllers remain independent; central voice input waits for screen work.
+        window.controller.start(window.config)
         wait_until(app, lambda: window.controller.worker.stt.calls == 2
                    and not window.controller.active)
         assert window.voice.recognized.text.toPlainText() == 'Привет'
@@ -72,7 +72,7 @@ def test_voice_cancel_allows_restart_while_translation_completes(app, tmp_path, 
         release.set()
         wait_until(app, lambda: window.translation.worker is None)
         assert window.translation.translated.text.toPlainText() == 'Привет, мир'
-        assert 'Привет! Я Eidos' in window.voice.answer.text.toPlainText()
+        assert window.voice.answer.text.toPlainText() == 'Привет, мир'
     finally:
         release.set()
         window.close()

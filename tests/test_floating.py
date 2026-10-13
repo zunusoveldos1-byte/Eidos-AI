@@ -73,7 +73,7 @@ def test_floating_status_controls_and_pin(app):
     for name in ('start', 'stop', 'pause', 'open'):
         getattr(widget, name + '_requested').connect(lambda n=name: received.append(n))
         getattr(widget, name + '_button').click()
-    assert received == ['start', 'stop', 'pause', 'open']
+    assert received == ['start', 'open']
     widget.set_status('speaking', 'Читаю ответ')
     assert widget.mascot.state == 'speaking'
     assert 'Читаю ответ' in widget.status_label.text()

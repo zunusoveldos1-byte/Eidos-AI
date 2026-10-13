@@ -1,0 +1,249 @@
+{
+  "source": "docs\\gestures\\recording\\camera-preview.mp4",
+  "frames": 243,
+  "fps": 15.0,
+  "recognized_frames": {
+    "volume": 76,
+    "media": 88,
+    "cursor": 35
+  },
+  "actions": [
+    {
+      "time": 1.6666666666666667,
+      "kind": "volume",
+      "value": 99.7127730374815
+    },
+    {
+      "time": 1.8,
+      "kind": "volume",
+      "value": 95.76903991576879
+    },
+    {
+      "time": 1.9333333333333333,
+      "kind": "volume",
+      "value": 88.69937138514953
+    },
+    {
+      "time": 2.6,
+      "kind": "media",
+      "value": null
+    },
+    {
+      "time": 5.266666666666667,
+      "kind": "volume",
+      "value": 70.3097586604282
+    },
+    {
+      "time": 5.533333333333333,
+      "kind": "volume",
+      "value": 65.20783985632562
+    },
+    {
+      "time": 5.666666666666667,
+      "kind": "volume",
+      "value": 56.360227359
+    },
+    {
+      "time": 5.8,
+      "kind": "volume",
+      "value": 52.032282085458306
+    },
+    {
+      "time": 5.933333333333334,
+      "kind": "volume",
+      "value": 45.844616421089945
+    },
+    {
+      "time": 7.8,
+      "kind": "media",
+      "value": null
+    },
+    {
+      "time": 8.266666666666667,
+      "kind": "volume",
+      "value": 97.09564363680629
+    },
+    {
+      "time": 9.133333333333333,
+      "kind": "volume",
+      "value": 92.64034531478242
+    },
+    {
+      "time": 9.8,
+      "kind": "cursor",
+      "value": [
+        1152,
+        404
+      ]
+    },
+    {
+      "time": 9.866666666666667,
+      "kind": "cursor",
+      "value": [
+        1149,
+        400
+      ]
+    },
+    {
+      "time": 10.333333333333334,
+      "kind": "cursor",
+      "value": [
+        1161,
+        387
+      ]
+    },
+    {
+      "time": 10.4,
+      "kind": "cursor",
+      "value": [
+        1160,
+        386
+      ]
+    },
+    {
+      "time": 10.466666666666667,
+      "kind": "cursor",
+      "value": [
+        1160,
+        384
+      ]
+    },
+    {
+      "time": 10.933333333333334,
+      "kind": "cursor",
+      "value": [
+        1198,
+        389
+      ]
+    },
+    {
+      "time": 11.533333333333333,
+      "kind": "media",
+      "value": null
+    },
+    {
+      "time": 13.266666666666667,
+      "kind": "cursor",
+      "value": [
+        1131,
+        420
+      ]
+    },
+    {
+      "time": 13.333333333333334,
+      "kind": "cursor",
+      "value": [
+        1134,
+        416
+      ]
+    },
+    {
+      "time": 13.4,
+      "kind": "cursor",
+      "value": [
+        1137,
+        412
+      ]
+    },
+    {
+      "time": 13.466666666666667,
+      "kind": "cursor",
+      "value": [
+        1140,
+        411
+      ]
+    },
+    {
+      "time": 13.533333333333333,
+      "kind": "cursor",
+      "value": [
+        1143,
+        411
+      ]
+    },
+    {
+      "time": 13.6,
+      "kind": "cursor",
+      "value": [
+        1148,
+        411
+      ]
+    },
+    {
+      "time": 13.666666666666666,
+      "kind": "cursor",
+      "value": [
+        1149,
+        411
+      ]
+    },
+    {
+      "time": 13.733333333333333,
+      "kind": "cursor",
+      "value": [
+        1152,
+        412
+      ]
+    },
+    {
+      "time": 13.8,
+      "kind": "cursor",
+      "value": [
+        1156,
+        411
+      ]
+    },
+    {
+      "time": 13.866666666666667,
+      "kind": "cursor",
+      "value": [
+        1161,
+        412
+      ]
+    },
+    {
+      "time": 13.933333333333334,
+      "kind": "cursor",
+      "value": [
+        1167,
+        413
+      ]
+    },
+    {
+      "time": 14.266666666666667,
+      "kind": "volume",
+      "value": 100.0
+    },
+    {
+      "time": 14.866666666666667,
+      "kind": "volume",
+      "value": 89.52911061648295
+    },
+    {
+      "time": 15.266666666666667,
+      "kind": "volume",
+      "value": 79.51924715942565
+    },
+    {
+      "time": 15.4,
+      "kind": "volume",
+      "value": 83.93170760738113
+    },
+    {
+      "time": 15.533333333333333,
+      "kind": "volume",
+      "value": 92.12653672761675
+    },
+    {
+      "time": 15.666666666666666,
+      "kind": "volume",
+      "value": 96.14200299653221
+    },
+    {
+      "time": 15.866666666666667,
+      "kind": "volume",
+      "value": 89.88848152466802
+    }
+  ],
+  "os_actions_executed": false
+}

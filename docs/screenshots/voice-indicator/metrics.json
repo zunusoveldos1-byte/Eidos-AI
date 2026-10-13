@@ -1,0 +1,194 @@
+[
+  {
+    "name": "enabled-ready-main",
+    "logical": [
+      1080,
+      800
+    ],
+    "pixels": [
+      1080,
+      800
+    ],
+    "dpr": 1.0
+  },
+  {
+    "name": "enabled-ready-compact",
+    "logical": [
+      360,
+      470
+    ],
+    "pixels": [
+      360,
+      470
+    ],
+    "dpr": 1.0
+  },
+  {
+    "name": "waiting-ready-main",
+    "logical": [
+      1080,
+      800
+    ],
+    "pixels": [
+      1080,
+      800
+    ],
+    "dpr": 1.0
+  },
+  {
+    "name": "waiting-ready-compact",
+    "logical": [
+      360,
+      470
+    ],
+    "pixels": [
+      360,
+      470
+    ],
+    "dpr": 1.0
+  },
+  {
+    "name": "recording-listening-main",
+    "logical": [
+      1080,
+      800
+    ],
+    "pixels": [
+      1080,
+      800
+    ],
+    "dpr": 1.0
+  },
+  {
+    "name": "recording-listening-compact",
+    "logical": [
+      360,
+      470
+    ],
+    "pixels": [
+      360,
+      470
+    ],
+    "dpr": 1.0
+  },
+  {
+    "name": "off-ready-main",
+    "logical": [
+      1080,
+      800
+    ],
+    "pixels": [
+      1080,
+      800
+    ],
+    "dpr": 1.0
+  },
+  {
+    "name": "off-ready-compact",
+    "logical": [
+      360,
+      470
+    ],
+    "pixels": [
+      360,
+      470
+    ],
+    "dpr": 1.0
+  },
+  {
+    "name": "error-error-main",
+    "logical": [
+      1080,
+      800
+    ],
+    "pixels": [
+      1080,
+      800
+    ],
+    "dpr": 1.0
+  },
+  {
+    "name": "error-error-compact",
+    "logical": [
+      360,
+      470
+    ],
+    "pixels": [
+      360,
+      470
+    ],
+    "dpr": 1.0
+  },
+  {
+    "name": "inactive-speaking-main",
+    "logical": [
+      1080,
+      800
+    ],
+    "pixels": [
+      1080,
+      800
+    ],
+    "dpr": 1.0
+  },
+  {
+    "name": "inactive-speaking-compact",
+    "logical": [
+      360,
+      470
+    ],
+    "pixels": [
+      360,
+      470
+    ],
+    "dpr": 1.0
+  },
+  {
+    "name": "inactive-paused-main",
+    "logical": [
+      1080,
+      800
+    ],
+    "pixels": [
+      1080,
+      800
+    ],
+    "dpr": 1.0
+  },
+  {
+    "name": "inactive-paused-compact",
+    "logical": [
+      360,
+      470
+    ],
+    "pixels": [
+      360,
+      470
+    ],
+    "dpr": 1.0
+  },
+  {
+    "name": "no-animation-main",
+    "logical": [
+      1080,
+      800
+    ],
+    "pixels": [
+      1080,
+      800
+    ],
+    "dpr": 1.0
+  },
+  {
+    "name": "no-animation-compact",
+    "logical": [
+      360,
+      470
+    ],
+    "pixels": [
+      360,
+      470
+    ],
+    "dpr": 1.0
+  }
+]

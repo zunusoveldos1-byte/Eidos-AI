@@ -1,0 +1,8 @@
+{
+  "configured_device": 1,
+  "name": "Набор микрофонов (2- Realtek(R)",
+  "default_sample_rate": 44100.0,
+  "input_channels": 2,
+  "user_microphone_consent": "Allow",
+  "machine_microphone_consent": "Allow"
+}

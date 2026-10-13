@@ -1,0 +1,50 @@
+[
+  {
+    "name": "voice",
+    "logical": [
+      1080,
+      760
+    ],
+    "pixels": [
+      2160,
+      1520
+    ],
+    "dpr": 2.0
+  },
+  {
+    "name": "activation",
+    "logical": [
+      1080,
+      760
+    ],
+    "pixels": [
+      2160,
+      1520
+    ],
+    "dpr": 2.0
+  },
+  {
+    "name": "compact",
+    "logical": [
+      360,
+      470
+    ],
+    "pixels": [
+      720,
+      940
+    ],
+    "dpr": 2.0
+  },
+  {
+    "name": "paused",
+    "logical": [
+      360,
+      470
+    ],
+    "pixels": [
+      720,
+      940
+    ],
+    "dpr": 2.0
+  }
+]

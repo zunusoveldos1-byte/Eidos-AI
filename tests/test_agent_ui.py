@@ -72,7 +72,9 @@ def test_chat_memory_tabs_and_profile_opt_in(app, tmp_path):
     try:
         wait_until(app, lambda:not window.controller.discovering)
         ui = window.assistant
-        assert ui.tabs.count()==7
+        assert ui.tabs.count()==1
+        assert window.memory.tabs.count()==2
+        assert window.settings.tabs.count()==3
         assert not ui.memory_enabled.isChecked()
         assert not any(c.isChecked() for c in ui.remote_checks.values())
         ui.input.setPlainText('Привет')

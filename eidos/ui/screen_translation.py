@@ -106,10 +106,13 @@ class TranslationWorker(QThread):
     def run(self):
         try:
             self.progress.emit('Распознавание текста…')
-            from eidos.modules.ocr.interface import JonSnowTranslator
-            adapter = JonSnowTranslator(self.ocr, self.translator)
-            lines = adapter.process(self.image, self.source, self.target, getattr(self, 'provider', 'google'),
-                                    self.cancel, self.progress.emit, self.recognized.emit)
+            from eidos.agent.harness import TaskContext
+            from eidos.agent.screen import screen_registry
+            context = TaskContext(cancel=self.cancel, screen_image=self.image,
+                                  progress=lambda state, text: self.progress.emit(text))
+            registry = screen_registry(self.ocr, self.translator, self.recognized.emit)
+            lines = registry.execute('screen_translate', {'source': self.source, 'target': self.target,
+                                     'provider': getattr(self, 'provider', 'google')}, context).data
             if not self.cancel.is_set():
                 self.result.emit(lines)
         except Exception as exc:
@@ -132,11 +135,11 @@ class TextTranslationWorker(QThread):
     def run(self):
         try:
             self.progress.emit('Перевод исправленного текста…')
-            if isinstance(self.translator, OnlineTranslator):
-                translated = self.translator.translate(self.text, self.source, self.target,
-                                                       cancel=self.cancel, progress=self.progress.emit)
-            else:
-                translated = self.translator.translate(self.text, self.source, self.target)
+            from eidos.agent.harness import TaskContext
+            from eidos.agent.screen import screen_registry
+            context = TaskContext(cancel=self.cancel, progress=lambda state, text: self.progress.emit(text))
+            translated = screen_registry(translator=self.translator).execute('text_translate',
+                {'text': self.text, 'source': self.source, 'target': self.target, 'provider': 'google'}, context).text
             if not self.cancel.is_set():
                 self.result.emit(translated)
         except Exception as exc:

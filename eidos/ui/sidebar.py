@@ -1,71 +1,83 @@
-from PyQt6.QtCore import QSize, pyqtSignal
-from PyQt6.QtWidgets import QButtonGroup, QHBoxLayout, QVBoxLayout, QWidget
+"""Eight destinations; stable IDs for existing voice commands."""
+from PyQt6.QtCore import QSize, pyqtSignal, pyqtProperty
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QButtonGroup, QScrollArea, QVBoxLayout, QWidget
 from .components import button, label
 from .icons import icon
-from .mascot import Mascot
 from .theme import ACCENT, SECONDARY
 
-NAMES = ('Главная', 'Голос', 'Жесты', 'Перевод', 'Настройки')
-ICONS = ('home', 'mic', 'hand', 'languages', 'settings')
+NAMES = ('Главная', 'Диалог', 'Голос', 'Экран и перевод', 'Камера и жесты', 'Инструменты', 'Память', 'Настройки')
+ICONS = ('home', 'message', 'mic', 'languages', 'camera', 'list', 'user', 'settings')
+PAGE_IDS = (0, 5, 1, 3, 2, 6, 7, 4)
 
 
 class Sidebar(QWidget):
     selected = pyqtSignal(int)
 
-    def __init__(self) -> None:
+    def __init__(self):
         super().__init__()
         self.setObjectName('sidebar')
-        self.setFixedWidth(218)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 24, 14, 24)
-        layout.setSpacing(8)
-        brand = QHBoxLayout()
-        self.logo = Mascot(48)
-        self.logo.setFixedWidth(48)
-        brand.addWidget(self.logo)
-        brand.addWidget(label('Eidos', 'brand'), 1)
-        layout.addLayout(brand)
-        layout.addSpacing(26)
+        self.setFixedWidth(240)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        scroll = QScrollArea()
+        scroll.setObjectName('sidebarScroll')
+        scroll.viewport().setObjectName('sidebarViewport')
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setStyleSheet('QScrollArea { border: none; background: transparent; }')
+        panel = QWidget()
+        panel.setObjectName('sidebarContent')
+        scroll.setWidget(panel)
+        outer.addWidget(scroll)
+        layout = QVBoxLayout(panel)
+        layout.setContentsMargins(14, 24, 14, 20)
+        layout.setSpacing(6)
+        layout.addWidget(label('Eidos', 'brand'))
+        layout.addWidget(label('Ваш рабочий помощник', 'muted'))
+        layout.addSpacing(20)
+        self.page_ids = PAGE_IDS
         self.group = QButtonGroup(self)
-        self.group.setExclusive(True)
         self.buttons = []
-        for index, name in enumerate(NAMES):
-            if index == 1:
-                layout.addSpacing(16)
-                layout.addWidget(label('  Разделы', 'muted'))
-            if index == 4:
-                assistant = button('  Ассистент', 'message')
-                assistant.setObjectName('nav')
-                assistant.setCheckable(True)
-                assistant.setAccessibleName('Ассистент')
-                assistant.setToolTip('Диалог, память, skills и подключения')
-                self.group.addButton(assistant, 5)
-                self.assistant_button = assistant
-                layout.addWidget(assistant)
-                layout.addStretch()
-                self.mascot = Mascot(130)
-                layout.addWidget(self.mascot)
-                layout.addSpacing(10)
-            widget = button('  ' + name, ICONS[index])
-            widget.setObjectName('nav')
-            widget.setCheckable(True)
-            widget.setIconSize(QSize(23, 23))
-            widget.setAccessibleName(name)
-            widget.setToolTip(f'Открыть раздел «{name}»')
-            self.group.addButton(widget, index)
-            self.buttons.append(widget)
-            layout.addWidget(widget)
+        for name, image, page_id in zip(NAMES, ICONS, PAGE_IDS):
+            control = button('  ' + name, image)
+            control.setObjectName('nav')
+            control.setStyleSheet('font-size: 13px; padding: 13px 8px;')
+            control.setCheckable(True)
+            control.setIconSize(QSize(20, 20))
+            control.setAccessibleName(name)
+            control.setToolTip(name)
+            self.group.addButton(control, page_id)
+            self.buttons.append(control)
+            layout.addWidget(control)
+        self.assistant_button = self.group.button(5)
+        layout.addStretch()
         self.group.idClicked.connect(self.selected)
         self.activate(0)
 
-    def activate(self, index: int) -> None:
-        (self.assistant_button if index == 5 else self.buttons[index]).setChecked(True)
-        self.assistant_button.setIcon(icon('message', ACCENT if index == 5 else SECONDARY))
-        for item, widget in enumerate(self.buttons):
-            widget.setIcon(icon(ICONS[item], ACCENT if item == index else SECONDARY))
+    def activate(self, index):
+        for image, page_id, control in zip(ICONS, PAGE_IDS, self.buttons):
+            control.setChecked(page_id == index)
+            control.setIcon(icon(image, ACCENT if page_id == index else SECONDARY))
 
-    def resizeEvent(self, event) -> None:
-        # Keep navigation available on short/high-DPI screens. The brand mascot
-        # remains visible; the lower decorative illustration needs spare room.
-        self.mascot.setVisible(self.height() >= 740)
+
+class SidebarHost(QWidget):
+    """Clip a stable-width menu while letting the main layout reclaim its space."""
+    def __init__(self, sidebar):
+        super().__init__()
+        self.sidebar = sidebar
+        sidebar.setParent(self)
+        self.panelWidth = 240
+
+    @pyqtProperty(int)
+    def panelWidth(self):
+        return self.width()
+
+    @panelWidth.setter
+    def panelWidth(self, value):
+        self.setFixedWidth(value)
+        self.sidebar.move(value - 240, 0)
+
+    def resizeEvent(self, event):
+        self.sidebar.resize(240, self.height())
         super().resizeEvent(event)

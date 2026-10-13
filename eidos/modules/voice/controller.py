@@ -20,8 +20,10 @@ class VoiceController(QObject):
     agent_progress = pyqtSignal(str, str)
     closed = pyqtSignal()
     level = pyqtSignal(float)
+    microphone_changed = pyqtSignal(str, str)
     start_requested = pyqtSignal(object, object)
     devices_requested = pyqtSignal()
+    audio_requested = pyqtSignal(object, object, object, str, bool)
 
     def __init__(self, cache: Path, parent: QObject | None = None,
                  worker: VoiceWorker | None = None) -> None:
@@ -31,11 +33,13 @@ class VoiceController(QObject):
         self.active = False
         self.discovering = False
         self.cancelling = False
+        self.microphone_state = 'inactive'
         self.thread = QThread(self)
         self.worker = worker or VoiceWorker()
         self.worker.moveToThread(self.thread)
         self.playback = AudioPlayback(self)
         self.start_requested.connect(self.worker.run_cycle)
+        self.audio_requested.connect(self.worker.run_audio)
         self.devices_requested.connect(self.worker.refresh_devices)
         self.worker.progress.connect(self._progress)
         self.worker.transcript.connect(self._transcript)
@@ -47,6 +51,7 @@ class VoiceController(QObject):
         self.worker.devices_error.connect(self._devices_error)
         self.worker.agent_progress.connect(self.agent_progress)
         self.worker.level.connect(self.level)
+        self.worker.microphone_changed.connect(self._microphone_changed)
         self.playback.finished.connect(self._playback_finished)
         self.playback.error.connect(self._error)
         self.thread.finished.connect(self.worker.deleteLater)
@@ -73,6 +78,7 @@ class VoiceController(QObject):
         self.worker.stop_event.clear()
         self.worker.cancel_event.clear()
         self.active = True
+        self._microphone_changed('inactive', '')
         self._set_state(State.STARTING, 'Открытие микрофона…')
         self.start_requested.emit(config, self.cache)
 
@@ -90,11 +96,43 @@ class VoiceController(QObject):
             self.worker.cancel_event.set()
             self.state_changed.emit(self.machine.state.value, 'Отмена… Ожидание текущей операции.')
 
+    def cancel(self) -> None:
+        if self.closing:
+            return
+        self.cancelling = self.active
+        self.worker.cancel_event.set()
+        self.worker.stop_event.set()
+        self._microphone_changed('inactive', '')
+        self.playback.stop()
+        if not self.active:
+            self._set_state(State.IDLE, 'Готов')
+
+    def start_audio(self, config: AppConfig, audio, recording_id: str) -> None:
+        if self.closing or self.active or self.discovering or self.playback.active:
+            return
+        config.validate()
+        if self.machine.state == State.ERROR:
+            self.machine.transition(State.IDLE)
+        self.cancelling = False
+        self.worker.cancel_event.clear()
+        self.worker.stop_event.clear()
+        self.active = True
+        self._set_state(State.STARTING, 'Команда с ключевым словом записана')
+        self._set_state(State.RECORDING, 'Обрабатываю')
+        self.audio_requested.emit(config, self.cache, audio, recording_id, True)
+
     def refresh_devices(self) -> None:
         if self.closing or self.active or self.discovering or self.playback.active:
             return
         self.discovering = True
         self.devices_requested.emit()
+
+    @pyqtSlot(str, str)
+    def _microphone_changed(self, state, message):
+        if (self.closing or self.cancelling) and state in ('enabled', 'recording'):
+            return
+        self.microphone_state = state
+        self.microphone_changed.emit(state, message)
 
     @pyqtSlot(str, str)
     def _progress(self, state: str, message: str) -> None:
@@ -163,6 +201,7 @@ class VoiceController(QObject):
         self._set_state(State.CLOSING, 'Завершение… Ожидание текущей операции.')
         self.worker.cancel_event.set()
         self.worker.stop_event.set()
+        self._microphone_changed('inactive', '')
         self.playback.dispose()
         self.thread.quit()
         if not self.thread.isRunning():

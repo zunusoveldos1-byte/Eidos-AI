@@ -20,7 +20,7 @@ def main() -> int:
         os.execv(str(runtime), [str(runtime), '-m', 'eidos', *sys.argv[1:]])
     parser = argparse.ArgumentParser(description='Eidos — голосовой настольный ассистент')
     parser.add_argument('--smoke-test', action='store_true', help='Открыть окно и безопасно закрыть через 1 секунду, без записи')
-    parser.add_argument('--page', choices=['home', 'voice', 'gestures', 'translation', 'settings', 'assistant'], default='home')
+    parser.add_argument('--page', choices=['home', 'voice', 'gestures', 'translation', 'settings', 'assistant', 'tools', 'memory', 'dialogue'], default='home')
     args = parser.parse_args()
     try:
         from PyQt6.QtCore import QTimer
@@ -35,8 +35,9 @@ def main() -> int:
     app.setApplicationName('Eidos')
     app.setOrganizationName('Eidos')
     window = MainWindow()
-    window.navigate(['home', 'voice', 'gestures', 'translation', 'settings', 'assistant'].index(args.page))
-    window.show()
+    window.navigate({'home': 0, 'voice': 1, 'gestures': 2, 'translation': 3,
+                     'settings': 4, 'assistant': 5, 'dialogue': 5, 'tools': 6, 'memory': 7}[args.page])
+    window.show_startup()
     if args.smoke_test:
         QTimer.singleShot(1000, window.request_exit)
     return app.exec()

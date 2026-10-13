@@ -1,0 +1,17 @@
+{
+  "scale": "1.25",
+  "dpr": 1.25,
+  "logical_size": [
+    1000,
+    760
+  ],
+  "pixel_size": [
+    1250,
+    950
+  ],
+  "desktop_transparent_corner": true,
+  "startup_maximized": true,
+  "character_count": 1,
+  "physical_monitor_count": 1,
+  "note": "Qt offscreen geometry probe; not a physical multi-monitor test"
+}

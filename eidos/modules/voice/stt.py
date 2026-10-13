@@ -20,9 +20,11 @@ class WhisperSTT:
         import numpy as np
 
         if audio.size < 2400:
-            raise ValueError('Запись пуста или слишком короткая. Запишите команду ещё раз.')
+            from .intents import RETRY_SPEECH
+            raise ValueError('Запись пуста или слишком короткая. ' + RETRY_SPEECH)
         if not np.isfinite(audio).all() or float(np.max(np.abs(audio))) < 0.0001:
-            raise ValueError('Запись содержит тишину. Проверьте выбранный микрофон.')
+            from .intents import RETRY_SPEECH
+            raise ValueError('Запись содержит тишину. ' + RETRY_SPEECH)
         if cancel.is_set():
             return ''
         key = (config.whisper_model, config.device)
@@ -56,10 +58,22 @@ class WhisperSTT:
             return ''
         progress('transcribing', 'Распознавание русской речи локально…')
         segments, _ = self._model.transcribe(audio, language='ru', beam_size=5,
-                                             vad_filter=True, condition_on_previous_text=False)
+                                             vad_filter=True, condition_on_previous_text=False,
+                                             initial_prompt='Эйдос. Голосовой помощник Эйдос. YouTube. Блокнот. Переведи область экрана. Прочитай оригинал. Прочитай перевод.')
         parts = []
+        uncertain = False
         for segment in segments:
             if cancel.is_set():
                 return ''
+            no_speech = getattr(segment, 'no_speech_prob', None)
+            logprob = getattr(segment, 'avg_logprob', None)
+            compression = getattr(segment, 'compression_ratio', None)
+            if ((no_speech is not None and no_speech > .6) or
+                    (logprob is not None and logprob < -1.) or
+                    (compression is not None and compression > 2.4)):
+                uncertain = True
             parts.append(segment.text.strip())
+        if uncertain or not any(parts):
+            from .intents import RETRY_SPEECH
+            raise ValueError(RETRY_SPEECH)
         return ' '.join(parts).strip()

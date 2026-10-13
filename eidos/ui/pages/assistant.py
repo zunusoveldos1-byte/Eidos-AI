@@ -4,7 +4,6 @@ from PyQt6.QtWidgets import (QCheckBox, QDateTimeEdit, QDialog, QHBoxLayout, QLi
                             QListWidget, QListWidgetItem, QPlainTextEdit, QSpinBox,
                             QTabWidget, QVBoxLayout, QWidget, QLabel, QScrollArea)
 from ..components import Page, Card, ResponsiveRow, button, combo, label
-from ..mascot import Mascot
 from eidos.agent.settings import PROFESSIONS, REMOTE_PERMISSIONS
 
 
@@ -26,6 +25,20 @@ def text_area(height=120, readonly=False):
 
 def row(layout, *widgets):
     layout.addWidget(ResponsiveRow(list(widgets), threshold=650, spacing=10))
+
+
+class FeedbackLabel(QLabel):
+    """Reserve space only while an actual service message is displayed."""
+    def __init__(self):
+        super().__init__()
+        self.setObjectName('muted')
+        self.setWordWrap(True)
+        self.setTextFormat(Qt.TextFormat.PlainText)
+        self.hide()
+
+    def setText(self, text):
+        super().setText(text)
+        self.setVisible(bool(text))
 
 
 class ProfileForm(Card):
@@ -89,13 +102,14 @@ class Onboarding(QDialog):
 
 class AssistantPage(Page):
     def __init__(self, service):
-        super().__init__('Ассистент', 'Диалог, инструменты и память — под вашим контролем')
+        super().__init__('Диалог', 'Задайте вопрос, дайте команду или приложите документ')
         self.service = service
         self.tabs = QTabWidget()
+        self.sections = {}
         self.tabs.setUsesScrollButtons(True)
         self.tabs.setMinimumHeight(260)
         self.body.addWidget(self.tabs, 1)
-        self.feedback = label('', 'muted')
+        self.feedback = FeedbackLabel()
         self.body.addWidget(self.feedback)
         self._chat()
         self._memory()
@@ -113,17 +127,17 @@ class AssistantPage(Page):
             elif heading.objectName() == 'subtitle':
                 heading.setObjectName('muted')
         self.tabs.addTab(page, title)
+        self.sections[title] = page
         return page
 
     def _chat(self):
         page = self.tab('Диалог', 'Начните с вопроса или команды Windows. Микрофон здесь не включается.')
         self.chat_page = page
         header = Card(margins=14)
-        self.mascot = Mascot(72)
         self.task_status = label('Готов к запросу', 'h2')
         self.stop = button('Остановить')
         self.stop.setEnabled(False)
-        row(header.body, self.mascot, self.task_status, self.stop)
+        row(header.body, self.task_status, self.stop)
         page.body.addWidget(header)
         self.profile_hint = label('', 'muted')
         page.body.addWidget(self.profile_hint)
@@ -140,7 +154,8 @@ class AssistantPage(Page):
         page.body.addWidget(self.input)
         self.incognito = QCheckBox('Разговор без сохранения')
         self.send = button('Отправить', 'message', True)
-        row(page.body, self.incognito, self.send)
+        self.voice_input = button('Голосовой ввод', 'mic')
+        row(page.body, self.incognito, self.voice_input, self.send)
         self.select_files = button('Выбрать файлы', 'file')
         self.select_folder = button('Рабочая папка')
         self.forget_files = button('Закрыть доступ к файлам')
@@ -158,7 +173,7 @@ class AssistantPage(Page):
         page.body.addWidget(self.journal)
 
     def _memory(self):
-        page = self.tab('Память', 'Локальная SQLite-память. Факты добавляете и исправляете вы; догадки модели не становятся фактами.')
+        page = self.tab('Память', 'Факты добавляете и исправляете вы; догадки модели не становятся фактами.')
         self.memory_enabled = QCheckBox('Сохранять диалоги и использовать релевантную память')
         self.memory_enabled.setChecked(self.service.settings.memory_enabled)
         page.body.addWidget(self.memory_enabled)
@@ -213,7 +228,7 @@ class AssistantPage(Page):
         row(page.body, self.event_create, self.event_update, self.event_delete, self.event_refresh)
 
     def _skills(self):
-        page = self.tab('Skills', 'Каталог возможностей. Разрешения всегда проверяет общий harness.')
+        page = self.tab('Skills', 'Доступные возможности и что нужно для их работы')
         self.skills_list = QListWidget()
         self.skills_list.setMinimumHeight(390)
         self.skill_detail = label('', 'muted')

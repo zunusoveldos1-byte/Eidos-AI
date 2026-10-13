@@ -1,0 +1,25 @@
+{
+  "qt_pause_resume": {
+    "pause_position_ms": 640,
+    "position_stable": true,
+    "source_retained_on_pause": true,
+    "continued_from_position": true,
+    "end_of_media": true,
+    "decoded_levels_received": 63,
+    "temporary_file_removed": true,
+    "errors": [],
+    "audio_levels_available": true
+  },
+  "sapi": {
+    "bytes": 250490,
+    "end_of_media": true,
+    "temporary_file_removed": true,
+    "errors": []
+  },
+  "edge": {
+    "bytes": 37584,
+    "end_of_media": true,
+    "temporary_file_removed": true,
+    "errors": []
+  }
+}

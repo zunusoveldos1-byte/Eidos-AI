@@ -12,6 +12,11 @@ class SecretStore:
             return tuple(value for name in self.NAMES if (value := self.get(name)))
         except (ImportError, RuntimeError, OSError):
             return ()
+        except Exception as exc:
+            # WinVault wraps WinError 5 in pywintypes.error rather than OSError.
+            if type(exc).__module__ in ('win32ctypes.pywin32.pywintypes', 'pywintypes', 'keyring.errors'):
+                return ()
+            raise
 
     def _backend(self):
         if sys.platform != 'win32':

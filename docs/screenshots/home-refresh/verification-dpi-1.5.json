@@ -1,0 +1,57 @@
+{
+  "scale": "1.5",
+  "layout": [
+    {
+      "case": "1674-940-expanded",
+      "dpr": 1.5,
+      "input_width": 711,
+      "content_width": 1434,
+      "viewport_width": 1434,
+      "vertical_scroll": 0
+    },
+    {
+      "case": "1200-800-expanded",
+      "dpr": 1.5,
+      "input_width": 409,
+      "content_width": 960,
+      "viewport_width": 960,
+      "vertical_scroll": 0
+    },
+    {
+      "case": "780-560-expanded",
+      "dpr": 1.5,
+      "input_width": 346,
+      "content_width": 532,
+      "viewport_width": 532,
+      "vertical_scroll": 546
+    },
+    {
+      "case": "1674-940-collapsed",
+      "dpr": 1.5,
+      "input_width": 863,
+      "content_width": 1674,
+      "viewport_width": 1674,
+      "vertical_scroll": 0
+    },
+    {
+      "case": "1200-800-collapsed",
+      "dpr": 1.5,
+      "input_width": 562,
+      "content_width": 1200,
+      "viewport_width": 1200,
+      "vertical_scroll": 0
+    },
+    {
+      "case": "780-560-collapsed",
+      "dpr": 1.5,
+      "input_width": 289,
+      "content_width": 772,
+      "viewport_width": 772,
+      "vertical_scroll": 172
+    }
+  ],
+  "restart_restored_menu": true,
+  "transparent_mascot": true,
+  "local_cyrillic_font": true,
+  "motion_stops_off_home_and_minimized": true
+}

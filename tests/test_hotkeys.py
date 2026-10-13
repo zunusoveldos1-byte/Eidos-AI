@@ -35,7 +35,7 @@ def test_hotkeys_config_roundtrip_and_old_config_migration(tmp_path):
     assert not store.load().speak
 
 
-@pytest.mark.parametrize('key', ['T', 'Shift+T', 'F12', 'Ctrl+F12', 'Ctrl+1', 'Ctrl+6', 'Ctrl+T, Ctrl+R', 'garbage'])
+@pytest.mark.parametrize('key', ['T', 'Shift+T', 'F12', 'Ctrl+F12', 'Ctrl+1', 'Ctrl+6', 'Ctrl+7', 'Ctrl+8', 'Ctrl+B', 'Ctrl+T, Ctrl+R', 'garbage'])
 def test_invalid_shortcuts_are_rejected(key):
     with pytest.raises(ValueError):
         parse_shortcut(key)

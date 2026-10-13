@@ -17,11 +17,18 @@ from .pages.assistant import Onboarding
 
 
 class VoiceAgentProvider:
-    def __init__(self, service, voice_worker, agent_worker):
+    def __init__(self, service, voice_worker, agent_worker, bridge=None):
         self.service, self.voice_worker, self.agent_worker = service, voice_worker, agent_worker
+        self.bridge = bridge
 
     def respond(self, text):
+        from eidos.modules.voice.intents import ui_intent
+        action = ui_intent(text)
+        if action and self.bridge:
+            self.voice_worker.full_reply = action.startswith('read_')
+            return self.bridge.request(action, self.voice_worker.cancel_event)
         context = self.service.context(cancel=self.voice_worker.cancel_event, incognito=self.service.incognito)
+        context.communication_style = getattr(self.voice_worker.current_config, 'communication_style', 'neutral')
         context.confirm = lambda action: self.agent_worker.confirm(action, context)
         context.progress = self.voice_worker.agent_progress.emit
         return self.service.respond(text, context)
@@ -45,7 +52,9 @@ class AssistantBindings:
         controller.finished.connect(self._agent_finished)
         controller.confirmation.connect(self._agent_confirm)
         controller.closed.connect(self._closed)
-        self.controller.worker.commands = VoiceAgentProvider(self.agent_service, self.controller.worker, controller.worker)
+        from .voice_bridge import VoiceUIBridge
+        self.voice_bridge = VoiceUIBridge(self)
+        self.controller.worker.commands = VoiceAgentProvider(self.agent_service, self.controller.worker, controller.worker, self.voice_bridge)
         ui.incognito.toggled.connect(lambda enabled:setattr(self.agent_service,'incognito',enabled))
         self.controller.agent_progress.connect(self._voice_agent_progress)
         ui.send.clicked.connect(self._send_chat)
@@ -99,7 +108,8 @@ class AssistantBindings:
         self._reminders.timeout.connect(self._show_reminders)
         self._reminders.start()
         if show_onboarding and not self.agent_service.settings.onboarding_done and not os.environ.get('EIDOS_SKIP_ONBOARDING'):
-            QTimer.singleShot(600, self._show_onboarding)
+            QTimer.singleShot(600, lambda: self._show_onboarding()
+                              if not self.agent_service.settings.onboarding_done else None)
 
     def _start_agent_task(self, kind, payload=None):
         if hasattr(self, 'background') and self.background.speech.active:
@@ -161,7 +171,7 @@ class AssistantBindings:
         if self.controller.closing or self.controller.cancelling:
             return
         self.voice.title.setText('Выполняю действие' if state in ('acting','checking') else 'Обрабатываю запрос')
-        self.voice.operation.setText(text)
+        self.voice.set_operation(text)
         self.voice.mascot.set_state('acting' if state in ('acting','checking') else 'thinking')
         self.sidebar.logo.set_state(self.voice.mascot.state)
         if hasattr(self, 'background'):
@@ -206,6 +216,8 @@ class AssistantBindings:
             self.sidebar.logo.set_state('ready')
             if hasattr(self, 'background') and not self.background.speech.active:
                 self.background.status('ready', 'Готов к запросу')
+            if hasattr(self, 'background'):
+                self.background.celebrate()
         self._agent_controls()
         self._update_controls()
         self._refresh_memory()
@@ -350,6 +362,7 @@ class AssistantBindings:
             return False
         try:
             self.agent_service.save_settings(settings)
+            self._update_processing_info()
             self.assistant.feedback.setText('Настройки ассистента сохранены.')
             self._refresh_skills()
             return True
@@ -464,6 +477,13 @@ class AssistantBindings:
     def _show_onboarding(self):
         if self.controller.closing or self.agent_controller.closing:
             return
+        if hasattr(self, '_onboarding'):
+            try:
+                if self._onboarding.isVisible():
+                    self._onboarding.raise_()
+                    return
+            except RuntimeError:
+                pass
         dialog = Onboarding(self.agent_service.settings, self)
         self._onboarding = dialog
         def done(result):
@@ -493,7 +513,7 @@ class AssistantBindings:
         hints = [suggestions[p] for p in self.agent_service.settings.professions if p in suggestions][:3]
         default_hint = ('Модель ответила успешно. Можно задать следующий вопрос; команды Windows работают без LLM.'
                         if self.agent_service.model_connected else
-                        'Команды Windows работают без модели. Для свободного диалога подключите модель во вкладке «Модель».')
+                        'Команды Windows работают без модели. Для свободного диалога откройте «Настройки → Модель».')
         self.assistant.profile_hint.setText('Попробуйте: ' + ' · '.join(hints) if hints else default_hint)
         self.assistant.input.setPlaceholderText((hints[0] if hints else 'Сделай громкость 30 процентов') + ' — или введите свой запрос')
 

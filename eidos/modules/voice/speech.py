@@ -9,6 +9,7 @@ from PyQt6.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
 
 from .speech_text import prepare_speech, split_sentences
 from .tts import EdgeTTS, SapiTTS
+from .personality import speech_rate
 
 
 class _SynthesisWorker(QObject):
@@ -34,7 +35,7 @@ class _SynthesisWorker(QObject):
                 provider = SapiTTS() if provider_name == 'sapi' else EdgeTTS()
                 voice = getattr(config, 'sapi_voice', '') if provider_name == 'sapi' else config.tts_voice
                 path = provider.synthesize(text, voice, cancel,
-                                           rate=getattr(config, 'tts_rate', 0), volume=100)
+                                           rate=speech_rate(config), volume=100)
         except Exception as exc:
             error = f'Не удалось озвучить ответ: {exc}'
         if cancel.is_set() and path:
@@ -138,8 +139,9 @@ class SpeechQueue(QObject):
             if hasattr(self.playback, 'set_volume'):
                 self.playback.set_volume(max(0, min(100, getattr(self._current_config, 'tts_volume', 100))))
             self._playing = True
-            self.state_changed.emit('playing', 'Говорю…')
             self.playback.play(Path(path))
+            if self._playing:  # A synchronous player error already clears this.
+                self.state_changed.emit('playing', 'Говорю…')
         else:
             self._finished()
 
@@ -152,6 +154,16 @@ class SpeechQueue(QObject):
     def _error(self, message: str) -> None:
         self.stop()
         self.state_changed.emit('error', message)
+
+    def toggle_pause(self) -> None:
+        if not self._playing or not self.playback.active:
+            return
+        if self.playback.paused:
+            self.playback.resume()
+            self.state_changed.emit('playing', 'Говорю')
+        else:
+            self.playback.pause()
+            self.state_changed.emit('paused', 'Озвучка на паузе · нажмите, чтобы продолжить')
 
     def stop(self) -> None:
         self._pending.clear()

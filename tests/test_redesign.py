@@ -29,12 +29,12 @@ def test_navigation_and_future_actions_disabled(app, tmp_path):
     window = MainWindow(ConfigStore(tmp_path / 'config.json'))
     try:
         assert isinstance(window.pages, QStackedWidget)
-        assert window.pages.count() == 6
-        for index, button in enumerate(window.sidebar.buttons):
+        assert window.pages.count() == 8
+        for index, button in zip(window.sidebar.page_ids, window.sidebar.buttons):
             button.click()
             assert window.pages.currentIndex() == index
             assert button.isChecked()
-        assert not window.gestures.camera_button.isEnabled()
+        assert window.gestures.camera_button.isEnabled() == bool(window.gestures._devices)
         assert window.translation.select_button.isEnabled()
         window.home.voice_button.click()
         assert window.pages.currentIndex() == 1
@@ -55,7 +55,7 @@ def test_settings_draft_save_reset_and_voice_sync(app, tmp_path, monkeypatch):
         settings.model.setCurrentText('tiny')
         settings.on_top.setChecked(True)
         settings.tts_voice.setCurrentIndex(settings.tts_voice.findData('ru-RU-DmitryNeural'))
-        assert window.config.speak is True
+        assert window.config.speak is False  # One shared voice control saves immediately.
         settings.save_button.click()
         assert not store.load().speak
         assert not window.voice.speak.isChecked()
@@ -90,7 +90,7 @@ def test_voice_real_signal_binding_and_copy(app, tmp_path):
         assert app.clipboard().text() == 'Проверка настоящего сигнала'
         window._state_changed('recording', 'Запись…')
         assert window.voice.mascot.state == 'listening'
-        assert window.voice.action_button.text() == 'Остановить'
+        assert window.voice.action_button.text() == 'Включить голосовой режим'
         window._state_changed('loading', 'Первая загрузка модели: требуется интернет')
         assert window.voice.mascot.state == 'thinking'
         assert 'интернет' in window.voice.operation.text()
@@ -151,10 +151,13 @@ def test_window_buttons_run_existing_voice_controller(app, tmp_path, monkeypatch
         window._devices([Microphone(1, 'Unit test mic')])
         window.navigate(1)
         assert window.voice.recognized.text.toPlainText() == ''
-        window.voice.action_button.click()
+        window.background._greeted = True
+        window.background.listen_enabled = True
+        window.controller.start(window.config)
         wait_until(app, lambda: window.current_state == 'recording')
-        assert window.voice.action_button.text() == 'Остановить'
-        window.voice.action_button.click()
+        assert window.voice.action_button.text() == 'Выключить голосовой режим'
+        window.controller.stop()
+        window.background.listen_enabled = False
         wait_until(app, lambda: window.current_state == 'idle')
         assert window.voice.recognized.text.toPlainText() == 'Привет'
         assert 'Привет' in window.voice.answer.text.toPlainText()

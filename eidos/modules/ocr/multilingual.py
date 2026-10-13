@@ -150,7 +150,8 @@ class ScreenOCR:
                 box = iterator.BoundingBox(tesserocr.RIL.TEXTLINE)
                 if text and box and iterator.Confidence(tesserocr.RIL.TEXTLINE) >= 35:
                     x1, y1, x2, y2 = box
-                    lines.append(TextLine(text, QRectF(x1, y1, x2 - x1, y2 - y1)))
+                    lines.append(TextLine(text, QRectF(x1, y1, x2 - x1, y2 - y1),
+                                          confidence=iterator.Confidence(tesserocr.RIL.TEXTLINE)))
                 if not iterator.Next(tesserocr.RIL.TEXTLINE):
                     break
                 index += 1

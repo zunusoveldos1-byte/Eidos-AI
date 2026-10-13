@@ -1,6 +1,6 @@
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QKeySequence
-from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget, QKeySequenceEdit, QSpinBox, QLineEdit
+from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget, QKeySequenceEdit, QSpinBox, QDoubleSpinBox, QLineEdit
 from eidos.core.config import AppConfig, MODELS
 from ..components import Card, Page, ResponsiveRow, Toggle, button, combo, label, setting_row
 
@@ -12,9 +12,14 @@ class SettingsPage(Page):
     stop_speech_requested = pyqtSignal()
     wake_secret_requested = pyqtSignal(str)
     voices_requested = pyqtSignal()
+    onboarding_requested = pyqtSignal()
+    profile_requested = pyqtSignal(str)
 
     def __init__(self) -> None:
         super().__init__('Настройки', 'Настройте Eidos под себя')
+        outer_body = self.body
+        self.general_page = Page('Общие параметры', 'Запуск, внешний вид и дополнительные параметры')
+        self.body = self.general_page.body
         general = Card()
         general.heading('Общие', 'settings')
         startup = Toggle('Запускать вместе с Windows — пока недоступно')
@@ -27,31 +32,61 @@ class SettingsPage(Page):
         language.setEnabled(False)
         language.setToolTip('В MVP поддерживается только русский интерфейс')
         general.body.addWidget(setting_row('Язык интерфейса', language))
-        voice = Card()
+        self.profile = combo()
+        self.profile.setEditable(True)
+        self.profile_row = setting_row('Текущий профиль', self.profile)
+        general.body.addWidget(self.profile_row)
+        self.profile_button = button('Сменить / создать профиль')
+        self.profile_button.clicked.connect(lambda: self.profile_requested.emit(self.profile.currentText().strip()))
+        self.profile_buttons = QWidget()
+        profile_buttons_layout = QVBoxLayout(self.profile_buttons)
+        profile_buttons_layout.addWidget(self.profile_button)
+        general.body.addWidget(self.profile_buttons)
+        self.onboarding_button = button('Заполнить опрос снова')
+        self.onboarding_button.clicked.connect(self.onboarding_requested)
+        profile_buttons_layout.addWidget(self.onboarding_button)
+        general.body.addWidget(label('Профиль хранит предпочтения и память. Вы выбираете его вручную.', 'muted'))
+        self.character_button = button('Показать персонажа', 'user')
+        general.body.addWidget(self.character_button)
+        self.processing_info = label('Обработка: OCR и Whisper — локально. Озвучка Edge и перевод Google отправляют только текст. SAPI работает локально.', 'muted')
+        general.body.addWidget(self.processing_info)
+        voice = self.voice_card = Card()
         voice.heading('Голос', 'mic')
         self.microphone = combo()
         self.microphone.setAccessibleName('Микрофон в настройках')
-        voice.body.addWidget(setting_row('Микрофон', self.microphone))
+        self.microphone_row = setting_row('Микрофон', self.microphone)
+        voice.body.addWidget(self.microphone_row)
         self.speak = Toggle('Озвучивать ответы')
-        voice.body.addWidget(setting_row('Озвучивать ответы', self.speak))
+        self.speak_row = setting_row('Озвучивать ответы', self.speak)
+        voice.body.addWidget(self.speak_row)
         self.tts_voice = combo()
         self.tts_voice.addItem('Светлана', 'ru-RU-SvetlanaNeural')
         self.tts_voice.addItem('Дмитрий', 'ru-RU-DmitryNeural')
         voice.body.addWidget(setting_row('Голос', self.tts_voice))
+        self.communication_style = combo()
+        for title, value in [('Нейтральный', 'neutral'), ('Дружелюбный', 'friendly'), ('Энергичный', 'energetic')]:
+            self.communication_style.addItem(title, value)
+        voice.body.addWidget(setting_row('Характер общения', self.communication_style))
+        voice.body.addWidget(label('Характер меняет реплики и темп. Edge / SAPI не предоставляют эмоциональные стили.', 'muted'))
         self.body.addWidget(ResponsiveRow([general, voice], threshold=690))
         background = Card()
         background.heading('Голос в фоне', 'mic')
         self.close_to_tray = Toggle('Закрытие скрывает Eidos в трей')
+        self.start_in_tray = Toggle('Запускать в трее')
         self.floating_enabled = Toggle('Плавающий маскот')
         self.floating_pinned = Toggle('Маскот поверх окон')
-        self.reduce_animations = Toggle('Уменьшить анимации')
+        self.reduce_animations = Toggle('Отключить анимации')
+        self.reduce_animations.setToolTip('Отключает декоративное движение, появление и переход меню. Также учитываются настройки анимации Windows.')
         self.voice_hotkey_enabled = Toggle('Глобальная клавиша голоса')
         self.voice_hotkey = self._shortcut_editor('Начать / остановить голосовой ввод')
         for text, control in [('Закрытие скрывает Eidos в трей', self.close_to_tray),
+                              ('Запускать в трее', self.start_in_tray),
                               ('Плавающий маскот', self.floating_enabled), ('Маскот поверх окон', self.floating_pinned),
-                              ('Уменьшить анимации', self.reduce_animations),
+                              ('Отключить анимации', self.reduce_animations),
                               ('Глобальная клавиша голоса', self.voice_hotkey_enabled), ('Начать / остановить голос', self.voice_hotkey)]:
             background.body.addWidget(setting_row(text, control))
+        speech = self.speech_card = Card()
+        speech.heading('Озвучка', 'mic')
         self.tts_provider = combo()
         self.tts_provider.addItem('Edge — онлайн', 'edge')
         self.tts_provider.addItem('Windows SAPI — локально', 'sapi')
@@ -67,16 +102,16 @@ class SettingsPage(Page):
         for text, control in [('Провайдер озвучки', self.tts_provider), ('Голос Windows SAPI', self.sapi_voice),
                               ('Скорость относительно обычной', self.tts_rate), ('Громкость', self.tts_volume),
                               ('Краткие голосовые ответы', self.voice_response_brief)]:
-            background.body.addWidget(setting_row(text, control))
+            speech.body.addWidget(setting_row(text, control))
         self.sample_button = button('Прослушать пример', 'mic')
         self.voices_button = button('Найти голоса Windows')
         self.voices_button.clicked.connect(self.voices_requested)
-        background.body.addWidget(self.voices_button)
+        speech.body.addWidget(self.voices_button)
         self.stop_speech_button = button('Остановить озвучку')
         self.sample_button.clicked.connect(self.sample_requested)
         self.stop_speech_button.clicked.connect(self.stop_speech_requested)
-        background.body.addWidget(ResponsiveRow([self.sample_button, self.stop_speech_button], threshold=500))
-        wake = Card()
+        speech.body.addWidget(ResponsiveRow([self.sample_button, self.stop_speech_button], threshold=500))
+        wake = self.wake_card = Card()
         wake.heading('Активация словом — Porcupine', 'mic')
         self.wake_word_enabled = Toggle('Локально ждать слово Eidos')
         self.wake_keyword_path, self.wake_model_path, self.wake_access_key = QLineEdit(), QLineEdit(), QLineEdit()
@@ -85,6 +120,10 @@ class SettingsPage(Page):
         for text, control in [('Включить активацию словом', self.wake_word_enabled), ('Windows-модель Eidos (.ppn)', self.wake_keyword_path),
                               ('Языковая модель (.pv)', self.wake_model_path), ('AccessKey', self.wake_access_key)]:
             wake.body.addWidget(setting_row(text, control))
+        self.wake_sensitivity = QDoubleSpinBox()
+        self.wake_sensitivity.setRange(0., 1.)
+        self.wake_sensitivity.setSingleStep(.05)
+        wake.body.addWidget(setting_row('Чувствительность ключевого слова', self.wake_sensitivity))
         self.wake_secret_button = button('Сохранить ключ отдельно')
         self.wake_secret_button.clicked.connect(lambda: self.wake_secret_requested.emit(self.wake_access_key.text()))
         wake.body.addWidget(self.wake_secret_button)
@@ -93,7 +132,7 @@ class SettingsPage(Page):
         wake.body.addWidget(self.wake_status)
         wake.body.addWidget(label('Обнаружение слова локальное. Во время озвучки микрофон освобождается. Нужен optional пакет pvporcupine и ваши модели.', 'muted'))
         self.body.addWidget(background)
-        self.body.addWidget(wake)
+        # MainWindow places this card in the dedicated activation tab.
         shortcuts = Card()
         shortcuts.heading('Горячие клавиши перевода', 'languages')
         self.hotkeys_enabled = Toggle('Включить горячие клавиши перевода')
@@ -107,13 +146,30 @@ class SettingsPage(Page):
         shortcuts.body.addWidget(label('Нажмите на поле и введите свою комбинацию. Крестик отключает отдельное действие. Изменения применяются кнопкой «Сохранить».', 'muted'))
         self.hotkeys_status = label('', 'muted')
         shortcuts.body.addWidget(self.hotkeys_status)
-        self.body.addWidget(shortcuts)
+        self.extra_settings_button = button('Дополнительные параметры и клавиши', 'settings')
+        self.extra_settings_button.setCheckable(True)
+        self.body.addWidget(self.extra_settings_button)
+        self.extra_settings = QWidget()
+        self.extra_settings_layout = QVBoxLayout(self.extra_settings)
+        self.extra_settings_layout.addWidget(shortcuts)
+        self.extra_settings.hide()
+        self.extra_settings_button.toggled.connect(self.extra_settings.setVisible)
+        self.body.addWidget(self.extra_settings)
         recognition = Card()
         recognition.heading('Распознавание', 'wave')
         self.model = combo()
         self.model.addItems(MODELS)
         recognition.body.addWidget(setting_row('Модель', self.model))
         recognition.body.addWidget(label('Работает локально после загрузки', 'muted'))
+        self.voice_sensitivity = QDoubleSpinBox()
+        self.voice_sensitivity.setRange(0., 1.)
+        self.voice_sensitivity.setSingleStep(.05)
+        self.voice_max_seconds = QSpinBox()
+        self.voice_max_seconds.setRange(5, 120)
+        self.voice_max_seconds.setSuffix(' с')
+        recognition.body.addWidget(setting_row('Чувствительность речи', self.voice_sensitivity))
+        recognition.body.addWidget(setting_row('Лимит команды', self.voice_max_seconds))
+        recognition.body.addWidget(label('Лёгкая обработка шума и VAD. В сильном шуме подойдите ближе к микрофону.', 'muted'))
         self.advanced_button = button('Дополнительные параметры', 'arrow')
         self.advanced_button.setCheckable(True)
         recognition.body.addWidget(self.advanced_button)
@@ -148,10 +204,12 @@ class SettingsPage(Page):
         self.animation = Toggle('Анимации маскота')
         appearance.body.addWidget(setting_row('Анимации маскота', self.animation))
         appearance.body.addWidget(label('Спокойная короткая анимация при смене состояния', 'muted'))
-        self.body.addWidget(ResponsiveRow([recognition, appearance], threshold=690))
+        self.extra_settings_layout.addWidget(recognition)
+        self.body.addWidget(appearance)
         self.feedback = label('', 'secondary')
         self.body.addWidget(self.feedback)
         self.body.addStretch()
+        self.body = outer_body
         footer = QWidget()
         footer.setStyleSheet('border-top: 1px solid #29362F;')
         footer_layout = QHBoxLayout(footer)
@@ -164,9 +222,14 @@ class SettingsPage(Page):
         footer_layout.addWidget(self.reset_button)
         footer_layout.addWidget(self.save_button)
         self.layout().addWidget(footer)
+        self.footer = footer
 
     def load(self, config: AppConfig) -> None:
-        for name in ('close_to_tray', 'floating_enabled', 'floating_pinned', 'reduce_animations',
+        self.communication_style.setCurrentIndex(self.communication_style.findData(config.communication_style))
+        self.voice_sensitivity.setValue(config.voice_sensitivity)
+        self.wake_sensitivity.setValue(config.wake_sensitivity)
+        self.voice_max_seconds.setValue(config.voice_max_seconds)
+        for name in ('close_to_tray', 'start_in_tray', 'floating_enabled', 'floating_pinned', 'reduce_animations',
                      'voice_hotkey_enabled', 'voice_response_brief', 'wake_word_enabled'):
             getattr(self, name).setChecked(getattr(config, name))
         self.voice_hotkey.setKeySequence(QKeySequence(config.voice_hotkey))
@@ -199,9 +262,12 @@ class SettingsPage(Page):
 
     def background_values(self):
         values = {name: getattr(self, name).isChecked() for name in
-                  ('close_to_tray', 'floating_enabled', 'floating_pinned', 'reduce_animations',
+                  ('close_to_tray', 'start_in_tray', 'floating_enabled', 'floating_pinned', 'reduce_animations',
                    'voice_hotkey_enabled', 'voice_response_brief', 'wake_word_enabled')}
         values.update(voice_hotkey=self.voice_hotkey.keySequence().toString(QKeySequence.SequenceFormat.PortableText),
+                      communication_style=self.communication_style.currentData(),
+                      voice_sensitivity=self.voice_sensitivity.value(), voice_max_seconds=self.voice_max_seconds.value(),
+                      wake_sensitivity=self.wake_sensitivity.value(),
                       tts_provider=self.tts_provider.currentData(), tts_rate=self.tts_rate.value(),
                       tts_volume=self.tts_volume.value(), sapi_voice=(self.sapi_voice.currentData() or '')
                       if self.sapi_voice.currentIndex() >= 0 and self.sapi_voice.currentText() == self.sapi_voice.itemText(self.sapi_voice.currentIndex())

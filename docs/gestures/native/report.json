@@ -1,0 +1,98 @@
+{
+  "cameras": [
+    {
+      "index": 0,
+      "name": "Integrated Camera"
+    }
+  ],
+  "monitors": [
+    {
+      "name": "\\\\.\\DISPLAY1",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "name": "\\\\.\\DISPLAY5",
+      "x": -1366,
+      "y": 117,
+      "width": 1366,
+      "height": 768
+    }
+  ],
+  "system_actions": "mocked",
+  "video_recorded": false,
+  "global_hotkey_registered": true,
+  "owner_unfocused": true,
+  "native_hotkey_dispatch": true,
+  "system_volume_read_percent": 68.00000071525574,
+  "processed_frames": 131,
+  "hand_frames": 130,
+  "gestures": {
+    "volume": 7,
+    "media": 0,
+    "cursor": 12
+  },
+  "fake_action_calls": [
+    {
+      "kind": "volume",
+      "value": 65.40019544671823
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        961,
+        907
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        959,
+        907
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        957,
+        907
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1020,
+        866
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1050,
+        847
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1069,
+        833
+      ]
+    }
+  ],
+  "statuses": [
+    "Включаю камеру…",
+    "Запускаю распознавание руки…",
+    "Распознавание работает локально · покажите ведущую руку целиком",
+    "● Камера включена · локальная обработка",
+    "Камера выключена · освобождаю устройство…",
+    "Камера выключена"
+  ],
+  "shutdown_seconds": 0.9958428999962052,
+  "workers_stopped": true,
+  "latency_ms_mean": 95.22606641219001,
+  "latency_ms_p95": 135.53769999998622,
+  "processing_fps_mean": 12.349106761155314
+}

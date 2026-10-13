@@ -3,12 +3,12 @@ from pathlib import Path
 from PyQt6.QtGui import QFont, QFontDatabase
 from PyQt6.QtWidgets import QApplication
 
-BACKGROUND = '#0D1110'
-SURFACE = '#151B18'
+BACKGROUND = '#081D18'
+SURFACE = '#0D3025'
 BORDER = '#29362F'
-ACCENT = '#2FE09B'
-TEXT = '#F2F6F3'
-SECONDARY = '#A8B7AE'
+ACCENT = '#25E6A1'
+TEXT = '#F2FAF6'
+SECONDARY = '#A9BDB5'
 ASSETS = Path(__file__).resolve().parents[1] / 'assets'
 _font_loaded = False
 
@@ -16,6 +16,7 @@ def install_font() -> None:
     global _font_loaded
     if not _font_loaded:
         QFontDatabase.addApplicationFont(str(ASSETS / 'fonts' / 'Inter.ttf'))
+        QFontDatabase.addApplicationFont(str(ASSETS / 'fonts' / 'Comfortaa.ttf'))
         _font_loaded = True
     font = QFont('Inter' if 'Inter' in QFontDatabase.families() else 'Segoe UI', 10)
     QApplication.instance().setFont(font)
@@ -24,6 +25,8 @@ STYLE = '''
 QWidget { color: #F2F6F3; font-family: "Inter", "Segoe UI"; font-size: 14px; }
 QMainWindow, QWidget#shell, QWidget#page, QWidget#pageContent { background: #0D1110; }
 QWidget#sidebar { background: #101613; border-right: 1px solid #29362F; }
+QWidget#sidebarContent, QWidget#sidebarViewport, QScrollArea#sidebarScroll { background: #101613; border: none; }
+QWidget#mascotStage { background: #0D1110; border-top: 1px solid #29362F; }
 QLabel { background: transparent; border: none; }
 QLabel#brand { font-size: 29px; font-weight: 700; }
 QLabel#h1 { font-size: 30px; font-weight: 700; }
@@ -73,7 +76,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
 QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }
 QToolTip { background: #22372B; color: #F2F6F3; border: 1px solid #456753; padding: 6px; }
 QMessageBox { background: #151B18; }
-QLineEdit, QSpinBox, QDateTimeEdit { background: #19211C; color: #F2F6F3; border: 1px solid #35453C; border-radius: 8px; padding: 9px; }
+QLineEdit, QSpinBox, QDoubleSpinBox, QDateTimeEdit { background: #19211C; color: #F2F6F3; border: 1px solid #35453C; border-radius: 8px; padding: 9px; }
 QLineEdit:focus, QPlainTextEdit:focus { border-color: #2FE09B; }
 QListWidget { background: #151E18; border: 1px solid #35453C; border-radius: 8px; padding: 8px; }
 QListWidget::item { padding: 8px; }
@@ -85,3 +88,27 @@ QCheckBox { spacing: 9px; }
 QDialog { background: #101713; }
 QPlainTextEdit#conversation { font-size: 14px; padding: 12px; }
 '''.replace('__CHEVRON__', (ASSETS / 'icons' / 'chevron.svg').as_posix())
+
+# Preserve all existing widget rules while applying the approved palette.
+for old, new in (('#0D1110', BACKGROUND), ('#151B18', SURFACE), ('#101613', '#0B251E'),
+                 ('#2FE09B', ACCENT), ('#F2F6F3', TEXT), ('#A8B7AE', SECONDARY)):
+    STYLE = STYLE.replace(old, new)
+STYLE += '''
+QLabel#brand { font-family: "Comfortaa"; font-weight: 700; font-size: 30px; }
+QPushButton#menuToggle { background: #0D3025; border: 1px solid #25E6A1; padding: 5px; border-radius: 9px; }
+QPushButton#menuToggle:hover { background: #0D3B2C; border-color: #25E6A1; }
+QPushButton#menuToggle:pressed { background: #0B251E; }
+QPushButton#nav:checked { background: #0D3B2C; border: 1px solid #25E6A1; color: #25E6A1; border-radius: 13px; }
+QFrame#homeComposer { background: rgba(13,48,37,190); border: 1px solid #3FBA91; border-radius: 22px; }
+QLineEdit#homeInput { background: transparent; border: none; font-size: 21px; padding: 8px; }
+QLineEdit#homeInput:focus { border: none; }
+QPushButton#homeMic { background: #0D3B2C; border: 1px solid #237D5D; border-radius: 26px; padding: 8px; }
+QPushButton#homeMic:hover { background: #145039; border-color: #25E6A1; }
+QPushButton#homeMic:pressed { background: #0D3025; }
+QLabel#homeStatus { color: #25E6A1; background: rgba(13,59,44,190); border: 1px solid #1C664A; border-radius: 18px; padding: 9px 15px; font-size: 13px; }
+QPushButton#cameraStatus { color: #A9BDB5; background: #0D3025; border: 1px solid #275646; border-radius: 17px; font-size: 12px; padding: 7px 15px; }
+QPushButton#homeAction { min-height: 106px; max-height: 106px; padding: 0; background: transparent; border: none; }
+QMenu { background: #0D3025; color: #F2FAF6; border: 1px solid #285343; padding: 6px; }
+QMenu::item { padding: 10px 18px; }
+QMenu::item:selected { background: #0D3B2C; color: #25E6A1; }
+'''

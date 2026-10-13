@@ -4,7 +4,7 @@ The speaking overlay is a general activity indication, not lip synchronization.
 """
 from functools import lru_cache
 import math
-from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, QPointF, QRectF, QSize, Qt, QTimer, pyqtProperty
+from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, QRectF, QSize, Qt, QTimer, pyqtProperty
 from PyQt6.QtGui import QPainter, QPixmap, QColor, QPen
 from PyQt6.QtWidgets import QSizePolicy, QWidget
 from .theme import ASSETS
@@ -12,16 +12,23 @@ from .theme import ASSETS
 STATE_DESCRIPTIONS = {
     'ready': 'готов', 'listening': 'слушает', 'thinking': 'думает',
     'acting': 'выполняет действие', 'speaking': 'говорит', 'error': 'ошибка',
-    'paused': 'прослушивание отключено',
+    'paused': 'прослушивание отключено', 'success': 'задача выполнена',
 }
 
 
 @lru_cache(maxsize=1)
+def emotion_frames() -> dict[str, tuple[QPixmap, ...]]:
+    atlas = QPixmap(str(ASSETS / 'mascot-emotions-clean.png'))
+    width, height = atlas.width() // 4, atlas.height() // 6
+    return {state: tuple(atlas.copy(column * width, row * height, width, height)
+                         for column in range(4))
+            for row, state in enumerate(('ready', 'listening', 'thinking', 'speaking', 'success', 'error'))}
+
+
+@lru_cache(maxsize=1)
 def frames() -> dict[str, QPixmap]:
-    atlas = QPixmap(str(ASSETS / 'mascot-atlas.png'))
-    width, height = atlas.width() // 2, atlas.height() // 2
-    return {state: atlas.copy((index % 2) * width, (index // 2) * height, width, height)
-            for index, state in enumerate(('ready', 'listening', 'thinking', 'error'))}
+    """Representative stills for cards and other non-animated surfaces."""
+    return {state: sequence[0] for state, sequence in emotion_frames().items()}
 
 
 class Mascot(QWidget):
@@ -46,6 +53,9 @@ class Mascot(QWidget):
         self.visual_timer = QTimer(self)
         self.visual_timer.setInterval(100)
         self.visual_timer.timeout.connect(self._animate)
+        self.celebration_timer = QTimer(self)
+        self.celebration_timer.setSingleShot(True)
+        self.celebration_timer.timeout.connect(lambda: self.set_state('ready'))
         self.setAccessibleName('Маскот Eidos: готов')
 
     def sizeHint(self) -> QSize:
@@ -75,7 +85,22 @@ class Mascot(QWidget):
 
     def _animate(self) -> None:
         self._tick = (self._tick + 1) % 600
-        self.offset = -2.0 * (1 - math.cos(self._tick * math.pi / 20))
+        amplitude = 4.0 if self.state == 'success' else 2.0
+        self.offset = -amplitude * (1 - math.cos(self._tick * math.pi / 20))
+
+    def celebrate(self, duration_ms: int = 1800) -> None:
+        self.set_state('success')
+        self.celebration_timer.start(duration_ms)
+
+    def current_frame(self) -> QPixmap:
+        state = {'acting': 'thinking', 'paused': 'ready'}.get(self.state, self.state)
+        index = 0
+        if self.animations_enabled:
+            if state == 'ready':
+                index = {46: 1, 47: 2, 48: 2, 49: 1}.get(self._tick % 50, 0)
+            else:
+                index = (self._tick // (3 if state == 'speaking' else 5)) % 4
+        return emotion_frames()[state][index]
 
     def set_level(self, value: float) -> None:
         value = float(value)
@@ -86,6 +111,9 @@ class Mascot(QWidget):
     def set_state(self, state: str) -> None:
         if state not in STATE_DESCRIPTIONS:
             raise ValueError(f'Unknown mascot state: {state}')
+        self.celebration_timer.stop()
+        if state != self.state:
+            self._tick = 0
         self.state = state
         self.setAccessibleName(f'Маскот Eidos: {STATE_DESCRIPTIONS[state]}')
         self.setAccessibleDescription('Общая анимация речи, без синхронизации губ' if state == 'speaking' else '')
@@ -109,18 +137,13 @@ class Mascot(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         size = min(self.width(), self.height())
         rect = QRectF((self.width() - size) / 2, (self.height() - size) / 2 + self._offset, size, size)
-        frame_state = {'acting': 'thinking', 'speaking': 'ready', 'paused': 'ready'}.get(self.state, self.state)
-        frame = frames()[frame_state]
+        frame = self.current_frame()
         painter.drawPixmap(rect, frame, QRectF(frame.rect()))
-        # Brief deterministic eye closure; the atlas remains the only artwork.
-        if self.animations_enabled and self.state == 'ready' and self._tick % 50 in (47, 48):
-            for x in (0.475, 0.68):
-                eye = QRectF(rect.x() + size * (x - .07), rect.y() + size * .515, size * .14, size * .095)
-                painter.setPen(Qt.PenStyle.NoPen)
-                painter.setBrush(QColor('#104B3B'))
-                painter.drawRoundedRect(eye, size * .03, size * .03)
-                painter.setPen(QPen(QColor('#82FFC1'), max(2, size * .015)))
-                painter.drawLine(eye.topLeft() + QPointF(0, eye.height()/2), eye.topRight() + QPointF(0, eye.height()/2))
+        if getattr(self, 'microphone_state', '') == 'off':
+            from .icons import icon
+            painter.drawPixmap(int(rect.right() - 28), int(rect.bottom() - 28), icon('mic', '#A8B7AE', 20).pixmap(20, 20))
+            painter.setPen(QPen(QColor('#E4BC76'), 2))
+            painter.drawLine(int(rect.right() - 28), int(rect.bottom() - 10), int(rect.right() - 9), int(rect.bottom() - 29))
         if self.state == 'acting':
             painter.setPen(QPen(QColor('#2FE09B'), 3))
             painter.drawArc(rect.adjusted(3, 3, -3, -3), (30 + self._tick * 12) * 16, 270 * 16)

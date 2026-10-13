@@ -12,9 +12,10 @@ class TranslationPage(Page):
     capture_started = pyqtSignal()
     capture_finished = pyqtSignal()
     speak_requested = pyqtSignal(str)
+    explain_requested = pyqtSignal(str)
 
     def __init__(self):
-        super().__init__('Перевод экрана', 'Выделите текст, исправьте его при необходимости и получите перевод')
+        super().__init__('Экран и перевод', 'Выделите область: прочитайте текст, переведите или попросите объяснение')
         self.worker = None
         self.captured_image = None
         self.region = None
@@ -97,6 +98,11 @@ class TranslationPage(Page):
         self.speak_button = button('Озвучить перевод', 'mic')
         self.speak_button.clicked.connect(lambda: self.speak_requested.emit(self.translated.text.toPlainText()))
         self.translated.body.addWidget(self.speak_button)
+        self.explain_button = button('Объяснить выбранный текст', 'message')
+        self.explain_button.setToolTip('Отправить только текст этой области выбранной модели')
+        self.explain_button.clicked.connect(lambda: self.explain_requested.emit(self.original.text.toPlainText().strip()))
+        self.original.body.addWidget(self.explain_button)
+        self.body.addWidget(label('Анализируется только выбранная область и только её текст. Понимание изображений и постоянный анализ экрана пока недоступны.', 'muted'))
         self.translated.text.textChanged.connect(self._update_actions)
         self.original.text.textChanged.connect(self._text_changed)
         self.body.addWidget(ResponsiveRow([self.original, self.translated], threshold=640))
@@ -380,6 +386,9 @@ class TranslationPage(Page):
         self.last_lines = list(lines)
         self.translated.text.setPlainText('\n'.join(line.translation for line in lines))
         self._show_result(lines)
+        confidence = [line.confidence for line in lines if getattr(line, 'confidence', None) is not None]
+        if confidence and min(confidence) < 60:
+            self.feedback.setText('Возможно, текст распознан неточно из-за шрифта или качества изображения')
 
     def _text_result(self, text):
         if self.closing or self._cancelled:

@@ -1,0 +1,55 @@
+{
+  "audio_saved": false,
+  "stt_requested": false,
+  "real_capture": {
+    "settled": true,
+    "state": "enabled",
+    "main": "Прослушивание включено",
+    "compact": "Прослушивание включено"
+  },
+  "mute": {
+    "main": "off",
+    "compact": "off",
+    "playback_paused": false
+  },
+  "invalid_device": {
+    "main": "error",
+    "compact": "error",
+    "description": "Не удалось открыть или записать микрофон. Проверьте устройство и разрешения Windows.",
+    "state_after_task_finished": "error"
+  },
+  "capture_events": [
+    [
+      "inactive",
+      ""
+    ],
+    [
+      "enabled",
+      ""
+    ],
+    [
+      "inactive",
+      ""
+    ],
+    [
+      "inactive",
+      ""
+    ],
+    [
+      "inactive",
+      ""
+    ],
+    [
+      "inactive",
+      ""
+    ],
+    [
+      "error",
+      "Не удалось открыть или записать микрофон. Проверьте устройство и разрешения Windows."
+    ],
+    [
+      "inactive",
+      ""
+    ]
+  ]
+}

@@ -22,7 +22,7 @@ class Shortcut:
     key: int
 
 
-def parse_shortcut(text: str) -> Shortcut | None:
+def parse_shortcut(text: str, *, allow_reserved: bool = False) -> Shortcut | None:
     if not isinstance(text, str):
         raise ValueError('Комбинация клавиш должна быть строкой.')
     if not text.strip():
@@ -91,8 +91,10 @@ def parse_shortcut(text: str) -> Shortcut | None:
         if virtual_key is None:
             raise ValueError('Эта клавиша не поддерживается. Используйте букву, цифру или F1–F24.')
     canonical = sequence.toString(QKeySequence.SequenceFormat.PortableText)
-    if canonical in {f'Ctrl+{index}' for index in range(1, 7)}:
-        raise ValueError('Ctrl+1…Ctrl+6 используются для разделов Eidos.')
+    if not allow_reserved and canonical in {f'Ctrl+{index}' for index in range(1, 9)}:
+        raise ValueError('Ctrl+1…Ctrl+8 используются для разделов Eidos.')
+    if not allow_reserved and modifiers == 2 and virtual_key == ord('B'):
+        raise ValueError('Ctrl+B используется для скрытия меню Eidos.')
     return Shortcut(canonical, modifiers, virtual_key)
 
 

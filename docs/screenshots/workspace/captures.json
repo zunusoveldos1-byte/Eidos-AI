@@ -1,0 +1,66 @@
+[
+  {
+    "page": "home",
+    "size": [
+      1320,
+      920
+    ],
+    "dpr": 1.0
+  },
+  {
+    "page": "dialogue",
+    "size": [
+      1320,
+      920
+    ],
+    "dpr": 1.0
+  },
+  {
+    "page": "voice",
+    "size": [
+      1320,
+      920
+    ],
+    "dpr": 1.0
+  },
+  {
+    "page": "screen",
+    "size": [
+      1320,
+      920
+    ],
+    "dpr": 1.0
+  },
+  {
+    "page": "camera",
+    "size": [
+      1320,
+      920
+    ],
+    "dpr": 1.0
+  },
+  {
+    "page": "tools",
+    "size": [
+      1320,
+      920
+    ],
+    "dpr": 1.0
+  },
+  {
+    "page": "memory",
+    "size": [
+      1320,
+      920
+    ],
+    "dpr": 1.0
+  },
+  {
+    "page": "settings",
+    "size": [
+      1320,
+      920
+    ],
+    "dpr": 1.0
+  }
+]

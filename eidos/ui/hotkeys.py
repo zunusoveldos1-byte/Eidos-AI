@@ -171,3 +171,31 @@ class TranslationHotkeys(QObject):
         app.applicationStateChanged.disconnect(self._application_state)
         if self.filter:
             app.removeNativeEventFilter(self.filter)
+
+
+class GestureEmergencyHotkey(TranslationHotkeys):
+    """Separate mandatory registration, never suspended while editing shortcuts."""
+    def configure(self,config):
+        from eidos.core.shortcuts import parse_shortcut
+        shortcut=parse_shortcut(config.gesture_emergency_hotkey)
+        identity=(shortcut.modifiers,shortcut.key)
+        identifier=self.bindings.get(identity)
+        if identifier is None:
+            identifier=next(self._identifiers)
+            if not self.backend.register(identifier,shortcut):
+                self.message=f'{shortcut.text} занята. Управление жестами заблокировано; выберите другую клавишу.'
+                self.status_changed.emit(self.message)
+                return False
+        for old,value in self.bindings.items():
+            if old!=identity: self.backend.unregister(value)
+        self.bindings={identity:identifier}; self.actions={identifier:'gesture_stop'}; self.config=config
+        self.message=(f'Аварийное отключение: {shortcut.text} · во всех приложениях' if self.backend.native
+                      else f'{shortcut.text}: только внутри Eidos · системное управление недоступно')
+        self.status_changed.emit(self.message)
+        return True
+
+    @property
+    def available(self): return bool(self.actions) and self.backend.native and not self.closed
+
+    def _focus_changed(self,previous,current): pass
+    def _application_state(self,state): pass

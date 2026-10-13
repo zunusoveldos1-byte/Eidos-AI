@@ -270,6 +270,17 @@ def open_url(args, context):
     return ToolResult('Браузер принял URL: ' + args['url'] + '. Загрузка страницы не проверялась.', bool(result))
 
 
+def open_notepad(args, context):
+    context.check()
+    executable = Path(os.environ.get('WINDIR', r'C:\Windows')) / 'System32' / 'notepad.exe'
+    if not executable.is_file():
+        raise RuntimeError('Блокнот Windows не найден.')
+    process = subprocess.Popen([str(executable)], stdin=subprocess.DEVNULL,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return ToolResult('Windows принял запуск Блокнота. Окно приложения не проверялось.',
+                      process.poll() in (None, 0))
+
+
 class LocalCalendar:
     def __init__(self, memory):
         self.memory = memory
@@ -346,6 +357,8 @@ def search_files(args, context):
 
 def build_registry(settings, memory):
     registry = Registry()
+    from .screen import register_screen_tools
+    register_screen_tools(registry)
     def add(name, description, props, callback, permission, **flags):
         registry.add(Tool(name, description, props, callback, permission, **flags))
     add('windows_settings', 'Открыть параметры Windows', {'page': {**S, 'enum': ['general', 'sound']}}, windows_settings, 'windows.settings')
@@ -355,6 +368,7 @@ def build_registry(settings, memory):
     add('open_app', 'Открыть разрешённое приложение. Список: ' + (', '.join(app_names) or 'пуст; добавьте EXE в настройках'),
         {'name': {**S, **({'enum': app_names} if app_names else {})}}, lambda a, c: open_application(a, c, settings), 'windows.apps')
     add('open_url', 'Открыть публичный URL в браузере', {'url': S}, open_url, 'browser.open')
+    add('open_notepad', 'Открыть стандартный Блокнот Windows', {}, open_notepad, 'windows.apps')
     def search(a, c):
         if settings.search_provider == 'brave':
             from .providers import request_json

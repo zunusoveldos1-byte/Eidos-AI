@@ -43,7 +43,18 @@ class Recorder:
 
     def __init__(self) -> None:
         self.level_callback: Callable[[float], None] | None = None
+        self.speech_callback: Callable[[], None] | None = None
         self.end_of_speech = False
+        self.sensitivity = .5
+        self.max_seconds = self.MAX_SECONDS
+        self._configured = False
+
+    def configure(self, config) -> None:
+        self.sensitivity = config.voice_sensitivity
+        self.max_seconds = config.voice_max_seconds
+        self.wait_for_speech = getattr(config, "continuous_listening", False)
+        self.end_of_speech = True
+        self._configured = True
 
     def record(self, device: int | None, stop: Event, cancel: Event,
                started: Callable[[], None]) -> 'np.ndarray | None':
@@ -66,15 +77,21 @@ class Recorder:
         count = 0
         overflow = False
         auto_end = self.end_of_speech
-        limit = sample_rate * (self.SPEECH_MAX_SECONDS if auto_end else self.MAX_SECONDS)
+        seconds = self.max_seconds if self._configured else self.SPEECH_MAX_SECONDS if auto_end else self.MAX_SECONDS
+        limit = sample_rate * seconds
+        noise_floor = .002
+        speech_threshold = self.SPEECH_THRESHOLD * (1.8 - 1.4 * self.sensitivity)
 
         def callback(indata: np.ndarray, frames: int, time_info: object, status: object) -> None:
-            nonlocal count, overflow, pre_count, heard_speech, silence_count, elapsed_count, level_count
+            nonlocal count, overflow, pre_count, heard_speech, silence_count, elapsed_count, level_count, noise_floor
             if status:
                 overflow = True
             if stop.is_set() or cancel.is_set():
                 return
             rms = float(np.sqrt(np.mean(np.square(indata[:, 0], dtype=np.float64))))
+            threshold = max(speech_threshold, noise_floor * (2.7 - self.sensitivity))
+            if rms < threshold:
+                noise_floor = .97 * noise_floor + .03 * rms
             level_count += frames
             if self.level_callback and level_count >= sample_rate / 10:
                 level_count = 0
@@ -82,8 +99,10 @@ class Recorder:
             elapsed_count += frames
             if auto_end:
                 if not heard_speech:
-                    if rms >= self.SPEECH_THRESHOLD:
+                    if rms >= threshold:
                         heard_speech = True
+                        if self.speech_callback:
+                            self.speech_callback()
                         chunks.extend(pre_roll)
                         count = pre_count
                         pre_roll.clear()
@@ -92,10 +111,10 @@ class Recorder:
                         pre_count += frames
                         while pre_roll and pre_count > sample_rate * self.PRE_ROLL_SECONDS:
                             pre_count -= pre_roll.popleft().size
-                        if elapsed_count >= sample_rate * self.ONSET_TIMEOUT:
+                        if not getattr(self, "wait_for_speech", False) and elapsed_count >= sample_rate * self.ONSET_TIMEOUT:
                             stop.set()
                         return
-                silence_count = silence_count + frames if rms < self.SPEECH_THRESHOLD else 0
+                silence_count = silence_count + frames if rms < threshold else 0
             remaining = limit - count
             if remaining > 0:
                 chunk = indata[:remaining, 0].copy()
@@ -124,4 +143,7 @@ class Recorder:
         if overflow:
             raise OSError('Потеря аудиоданных. Закройте другие аудиоприложения и повторите запись.')
         audio = np.concatenate(chunks) if chunks else np.array([], dtype=np.float32)
+        if audio.size:
+            # Cheap DC removal; avoid an aggressive gate which cuts quiet consonants.
+            audio -= np.mean(audio)
         return resample(audio, sample_rate)

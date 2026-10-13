@@ -1,0 +1,352 @@
+{
+  "cameras": [
+    {
+      "index": 0,
+      "name": "Integrated Camera"
+    }
+  ],
+  "monitors": [
+    {
+      "name": "\\\\.\\DISPLAY1",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "name": "\\\\.\\DISPLAY5",
+      "x": -1366,
+      "y": 117,
+      "width": 1366,
+      "height": 768
+    }
+  ],
+  "system_actions": "mocked",
+  "video_recorded": true,
+  "global_hotkey_registered": true,
+  "owner_unfocused": true,
+  "native_hotkey_dispatch": true,
+  "system_volume_read_percent": 68.00000071525574,
+  "processed_frames": 235,
+  "hand_frames": 234,
+  "gestures": {
+    "volume": 57,
+    "media": 82,
+    "cursor": 40
+  },
+  "fake_action_calls": [
+    {
+      "kind": "volume",
+      "value": 100.0
+    },
+    {
+      "kind": "volume",
+      "value": 91.97129646700077
+    },
+    {
+      "kind": "volume",
+      "value": 87.21914251723832
+    },
+    {
+      "kind": "media",
+      "value": null
+    },
+    {
+      "kind": "media",
+      "value": null
+    },
+    {
+      "kind": "volume",
+      "value": 99.91969382016845
+    },
+    {
+      "kind": "volume",
+      "value": 93.446864078664
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1132,
+        398
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1133,
+        398
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1136,
+        398
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1138,
+        396
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1142,
+        395
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1144,
+        394
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1146,
+        393
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1148,
+        393
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1149,
+        391
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1150,
+        389
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1152,
+        388
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1154,
+        386
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1157,
+        383
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1159,
+        381
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1161,
+        379
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1163,
+        378
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1163,
+        378
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1163,
+        378
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1163,
+        379
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1163,
+        380
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1166,
+        380
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1169,
+        380
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1173,
+        380
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1177,
+        380
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1179,
+        381
+      ]
+    },
+    {
+      "kind": "media",
+      "value": null
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1144,
+        418
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1146,
+        414
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1148,
+        412
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1151,
+        410
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1154,
+        410
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1156,
+        410
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1159,
+        409
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1160,
+        407
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1163,
+        406
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1166,
+        406
+      ]
+    },
+    {
+      "kind": "cursor",
+      "value": [
+        1167,
+        406
+      ]
+    },
+    {
+      "kind": "volume",
+      "value": 100.0
+    },
+    {
+      "kind": "volume",
+      "value": 94.14624325079116
+    },
+    {
+      "kind": "volume",
+      "value": 97.13165919288767
+    },
+    {
+      "kind": "volume",
+      "value": 85.62869239508268
+    }
+  ],
+  "statuses": [
+    "Включаю камеру…",
+    "Запускаю распознавание руки…",
+    "Распознавание работает локально · покажите ведущую руку целиком",
+    "● Камера включена · локальная обработка",
+    "Камера выключена · освобождаю устройство…",
+    "Камера выключена"
+  ],
+  "shutdown_seconds": 0.6765518999964115,
+  "workers_stopped": true,
+  "latency_ms_mean": 54.16730212758573,
+  "latency_ms_p95": 85.45859999867389,
+  "processing_fps_mean": 12.983965356396533
+}

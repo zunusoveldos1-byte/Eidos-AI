@@ -15,6 +15,7 @@ class TextLine:
     text: str
     rect: QRectF
     translation: str = ''
+    confidence: float | None = None  # 0–100, only supplied by an OCR engine that exposes it.
 
 
 class WindowsOCR:

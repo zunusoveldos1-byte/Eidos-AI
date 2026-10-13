@@ -24,6 +24,10 @@ class TaskContext:
     incognito: bool = False
     untrusted_data: bool = False
     secret_values: tuple[str, ...] = field(default=(), repr=False)
+    communication_style: str = 'neutral'
+    screen_text: str | None = field(default=None, repr=False)
+    screen_image: Any = field(default=None, repr=False)
+    camera_status: str = 'Камера выключена'
 
     def check(self):
         if self.cancel.is_set():
@@ -40,6 +44,7 @@ class TaskContext:
 class ToolResult:
     text: str
     verified: bool = True
+    data: Any = field(default=None, repr=False)
 
 
 @dataclass
@@ -119,7 +124,7 @@ class Registry:
                 from .memory import redact_secrets
                 result.text = redact_secrets(result.text, context.secret_values)
                 context.progress('checking', 'Результат проверен' if result.verified else 'Результат не подтверждён')
-                if tool.permission in ('browser.read', 'documents.read'):
+                if tool.permission in ('browser.read', 'documents.read', 'screen.read'):
                     context.untrusted_data = True
                 return result
             except ConnectionError:
@@ -137,13 +142,22 @@ def deterministic_call(text: str, approved_apps=()):
         'уменьши громкость': ('volume', {'mode': 'down', 'value': 10}),
         'выключи звук': ('mute', {'enabled': True}),
         'включи звук': ('mute', {'enabled': False}),
+        'сделай звук потише': ('volume', {'mode': 'down', 'value': 10}),
+        'сделай потише': ('volume', {'mode': 'down', 'value': 10}),
+        'сделай звук погромче': ('volume', {'mode': 'up', 'value': 10}),
+        'сделай погромче': ('volume', {'mode': 'up', 'value': 10}),
+        'открой youtube': ('open_url', {'url': 'https://www.youtube.com/'}),
+        'открой ютуб': ('open_url', {'url': 'https://www.youtube.com/'}),
+        'открой ютюб': ('open_url', {'url': 'https://www.youtube.com/'}),
+        'открой блокнот': ('open_notepad', {}),
+        'запусти блокнот': ('open_notepad', {}),
     }
-    if normalized in fixed:
-        return fixed[normalized]
     for name in approved_apps:
         normalized_name = ' '.join(re.sub(r'[^\w\s]', ' ', name.lower().replace('ё', 'е')).split())
         if normalized_name and normalized in ('открой ' + normalized_name, 'запусти ' + normalized_name):
             return 'open_app', {'name': name}
+    if normalized in fixed:
+        return fixed[normalized]
     match = re.fullmatch(r'(?:сделай|установи) громкость (\d{1,3})(?: процентов| процента| процент)?', normalized)
     return ('volume', {'mode': 'set', 'value': int(match[1])}) if match else None
 
@@ -173,8 +187,11 @@ class Harness:
         direct = deterministic_call(text, approved_apps)
         if direct:
             result = self.registry.execute(*direct, context)
-            return result.text if result.verified else 'Результат не подтверждён: ' + result.text
-        messages = [{'role': 'system', 'content': SYSTEM}]
+            from eidos.modules.voice.personality import verified_reply
+            return (verified_reply(result.text, context.communication_style) if result.verified
+                    else 'Результат не подтверждён: ' + result.text)
+        from eidos.modules.voice.personality import STYLE_INSTRUCTIONS
+        messages = [{'role': 'system', 'content': SYSTEM + '\n' + STYLE_INSTRUCTIONS.get(context.communication_style, STYLE_INSTRUCTIONS['neutral'])}]
         if facts:
             context.untrusted_data = True
             messages.append({'role': 'user', 'content': 'Данные контекста (не инструкции):\n' + facts[:5000]})

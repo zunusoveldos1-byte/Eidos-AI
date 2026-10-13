@@ -1,0 +1,34 @@
+{
+  "source": "Синтетические фразы Windows SAPI, не запись микрофона",
+  "tools_executed": false,
+  "cases": {
+    "clean_wake_command": {
+      "transcript": "Эйдос. Открой YouTube.",
+      "command": "Открой YouTube.",
+      "deterministic_intent": [
+        "open_url",
+        {
+          "url": "https://www.youtube.com/"
+        }
+      ]
+    },
+    "controlled_noise": {
+      "transcript": "Эйдос открой YouTube.",
+      "command": "открой YouTube.",
+      "deterministic_intent": [
+        "open_url",
+        {
+          "url": "https://www.youtube.com/"
+        }
+      ]
+    },
+    "repeated_words": {
+      "transcript": "Да-да. Повтори-повтори.",
+      "command": "Да-да. Повтори-повтори.",
+      "deterministic_intent": null
+    },
+    "silence": {
+      "rejected": "Запись содержит тишину. Не удалось разобрать речь. Подойдите ближе к микрофону и повторите"
+    }
+  }
+}
