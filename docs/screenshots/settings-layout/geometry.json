@@ -1,0 +1,236 @@
+[
+  {
+    "case": "1920-1080-general-0",
+    "scrolls": [
+      {
+        "vertical": 0,
+        "horizontal": 0,
+        "viewport": [
+          1646,
+          913
+        ]
+      }
+    ]
+  },
+  {
+    "case": "1920-1080-model-0",
+    "scrolls": [
+      {
+        "vertical": 0,
+        "horizontal": 0,
+        "viewport": [
+          1646,
+          961
+        ]
+      }
+    ]
+  },
+  {
+    "case": "1920-1080-connections-0",
+    "scrolls": [
+      {
+        "vertical": 0,
+        "horizontal": 0,
+        "viewport": [
+          1646,
+          961
+        ]
+      }
+    ]
+  },
+  {
+    "case": "1920-1080-voice-0",
+    "scrolls": [
+      {
+        "vertical": 0,
+        "horizontal": 0,
+        "viewport": [
+          1644,
+          872
+        ]
+      }
+    ]
+  },
+  {
+    "case": "1920-1080-voice-1",
+    "scrolls": [
+      {
+        "vertical": 0,
+        "horizontal": 0,
+        "viewport": [
+          1644,
+          872
+        ]
+      }
+    ]
+  },
+  {
+    "case": "1920-1080-translation-0",
+    "scrolls": [
+      {
+        "vertical": 0,
+        "horizontal": 0,
+        "viewport": [
+          1646,
+          913
+        ]
+      }
+    ]
+  },
+  {
+    "case": "1200-800-general-0",
+    "scrolls": [
+      {
+        "vertical": 0,
+        "horizontal": 0,
+        "viewport": [
+          926,
+          633
+        ]
+      }
+    ]
+  },
+  {
+    "case": "1200-800-model-0",
+    "scrolls": [
+      {
+        "vertical": 0,
+        "horizontal": 0,
+        "viewport": [
+          926,
+          681
+        ]
+      }
+    ]
+  },
+  {
+    "case": "1200-800-connections-0",
+    "scrolls": [
+      {
+        "vertical": 0,
+        "horizontal": 0,
+        "viewport": [
+          926,
+          681
+        ]
+      }
+    ]
+  },
+  {
+    "case": "1200-800-voice-0",
+    "scrolls": [
+      {
+        "vertical": 0,
+        "horizontal": 0,
+        "viewport": [
+          924,
+          592
+        ]
+      }
+    ]
+  },
+  {
+    "case": "1200-800-voice-1",
+    "scrolls": [
+      {
+        "vertical": 0,
+        "horizontal": 0,
+        "viewport": [
+          924,
+          592
+        ]
+      }
+    ]
+  },
+  {
+    "case": "1200-800-translation-0",
+    "scrolls": [
+      {
+        "vertical": 0,
+        "horizontal": 0,
+        "viewport": [
+          926,
+          633
+        ]
+      }
+    ]
+  },
+  {
+    "case": "780-560-general-0",
+    "scrolls": [
+      {
+        "vertical": 266,
+        "horizontal": 0,
+        "viewport": [
+          498,
+          392
+        ]
+      }
+    ]
+  },
+  {
+    "case": "780-560-model-0",
+    "scrolls": [
+      {
+        "vertical": 177,
+        "horizontal": 0,
+        "viewport": [
+          498,
+          441
+        ]
+      }
+    ]
+  },
+  {
+    "case": "780-560-connections-0",
+    "scrolls": [
+      {
+        "vertical": 489,
+        "horizontal": 0,
+        "viewport": [
+          498,
+          441
+        ]
+      }
+    ]
+  },
+  {
+    "case": "780-560-voice-0",
+    "scrolls": [
+      {
+        "vertical": 460,
+        "horizontal": 0,
+        "viewport": [
+          496,
+          351
+        ]
+      }
+    ]
+  },
+  {
+    "case": "780-560-voice-1",
+    "scrolls": [
+      {
+        "vertical": 0,
+        "horizontal": 0,
+        "viewport": [
+          504,
+          351
+        ]
+      }
+    ]
+  },
+  {
+    "case": "780-560-translation-0",
+    "scrolls": [
+      {
+        "vertical": 0,
+        "horizontal": 0,
+        "viewport": [
+          506,
+          392
+        ]
+      }
+    ]
+  }
+]

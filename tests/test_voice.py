@@ -36,7 +36,7 @@ def test_recorder_closes_stream_on_cancellation(monkeypatch):
             self.callback = kwargs['callback']
 
         def start(self):
-            self.callback(np.ones((1600, 1), dtype=np.float32), 1600, None, False)
+            self.callback(np.full(512, 3276, dtype='<i2').tobytes(), 512, None, False)
             cancel.set()
 
         def abort(self):
@@ -46,7 +46,7 @@ def test_recorder_closes_stream_on_cancellation(monkeypatch):
             closed.append('close')
 
     monkeypatch.setitem(sys.modules, 'sounddevice', SimpleNamespace(
-        InputStream=Stream, query_devices=lambda *_: {'default_samplerate': 16000},
+        RawInputStream=Stream, query_devices=lambda *_: {'default_samplerate': 16000},
         check_input_settings=lambda **_: None,
     ))
     audio = Recorder().record(None, threading.Event(), cancel, lambda: None)
@@ -70,9 +70,8 @@ class FakeSTT:
 def test_worker_full_cycle_without_real_model(tmp_path):
     class TTS:
         def synthesize(self, text, voice, cancel):
-            path = tmp_path / 'response.mp3'
-            path.write_bytes(b'fake')
-            return path
+            from eidos.modules.voice.pcm import PCMAudio
+            return PCMAudio(bytes(1024))
 
     worker = VoiceWorker(recorder=FakeRecorder(), stt=FakeSTT(), tts=TTS())
     replies, audio, done = [], [], []
@@ -81,7 +80,7 @@ def test_worker_full_cycle_without_real_model(tmp_path):
     worker.finished.connect(lambda: done.append(True))
     worker.run_cycle(AppConfig(), tmp_path)
     assert replies and 'Привет' in replies[0]
-    assert audio == [tmp_path / 'response.mp3']
+    assert len(audio) == 1 and audio[0].data == bytes(1024)
     assert done == [True]
 
 

@@ -18,9 +18,9 @@ class State(str, Enum):
 class StateMachine:
     NEXT = {
         State.IDLE: {State.STARTING},
-        State.STARTING: {State.RECORDING},
+        State.STARTING: {State.LOADING, State.RECORDING},
         State.RECORDING: {State.LOADING, State.TRANSCRIBING},
-        State.LOADING: {State.TRANSCRIBING},
+        State.LOADING: {State.RECORDING, State.TRANSCRIBING},
         State.TRANSCRIBING: {State.SYNTHESIZING},
         State.SYNTHESIZING: {State.PLAYING},
         State.PLAYING: set(),

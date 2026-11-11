@@ -35,7 +35,8 @@ def register_screen_tools(registry, ocr=None, translator=None, recognized=None):
         from eidos.modules.ocr.interface import JonSnowTranslator
         adapter = JonSnowTranslator(ocr, translator)
         lines = adapter.process(context.screen_image, args['source'], args['target'], args['provider'],
-                                context.cancel, lambda text: context.progress('thinking', text), recognized)
+                                context.cancel, lambda text: context.progress('thinking', text), recognized,
+                                context.secret_values)
         return ToolResult('\n'.join(line.translation for line in lines), data=lines)
 
     def translate_text(args, context):
@@ -43,8 +44,11 @@ def register_screen_tools(registry, ocr=None, translator=None, recognized=None):
         if args['provider'] != 'google':
             raise ValueError('Выберите провайдер перевода. Google получает только текст.')
         from eidos.modules.ocr.engine import OnlineTranslator
+        from .memory import require_public_text
+        require_public_text(args['text'], context.secret_values)
         engine = translator or OnlineTranslator()
         if isinstance(engine, OnlineTranslator):
+            engine.secret_values = context.secret_values
             result = engine.translate(args['text'], args['source'], args['target'], cancel=context.cancel,
                                       progress=lambda text: context.progress('thinking', text))
         else:
@@ -61,4 +65,4 @@ def register_screen_tools(registry, ocr=None, translator=None, recognized=None):
 
 def camera_status(context):
     local_input(context)
-    return ToolResult(context.camera_status + '\nОписание сцены и распознавание жестов пока недоступны.')
+    return ToolResult(context.camera_status + '\nКамера и распознавание руки управляются на странице камеры. Описание сцены недоступно.')

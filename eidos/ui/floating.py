@@ -1,6 +1,7 @@
 """Optional floating voice controls; application owns visibility and persistence."""
 from PyQt6.QtCore import QEvent, QPoint, QRect, QSize, Qt, pyqtSignal
-from PyQt6.QtWidgets import QApplication, QCheckBox, QGridLayout, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QGridLayout, QHBoxLayout, QVBoxLayout
+from eidos.ui.localized import QCheckBox, QLabel, QPushButton, QWidget
 
 from .mascot import Mascot, STATE_DESCRIPTIONS
 from .voice_orb import VoiceOrb, TITLES, MIC_TITLES
@@ -124,8 +125,8 @@ class FloatingMascot(QWidget):
         self._response_text = 'Ответ: ' + status + ('\n' + message if message else '')
         self._response_message = message
         self._refresh_description()
-        self.status_label.setAccessibleName(self.status_label.text())
-        self.setAccessibleDescription(self.status_label.text())
+        self.status_label.setAccessibleName(self.status_label.source_text())
+        self.setAccessibleDescription(self.status_label.source_text())
 
     def set_microphone(self, state, error=''):
         self.mascot.set_microphone(state, error)

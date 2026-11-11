@@ -7,7 +7,9 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from PyQt6.QtCore import QDateTime, QTimer, Qt, QSignalBlocker
-from PyQt6.QtWidgets import QFileDialog, QInputDialog, QListWidgetItem, QMessageBox
+from PyQt6.QtWidgets import QListWidgetItem
+from .localized import QFileDialog, QInputDialog
+from eidos.ui.localized import QMessageBox
 
 from eidos.agent.controller import AgentController
 from eidos.agent.harness import TaskContext
@@ -39,7 +41,17 @@ class VoiceAgentProvider:
 
 class AssistantBindings:
     def _init_agent(self, show_onboarding=False):
+        from .desktop_commands import DesktopUI
+        self.desktop_ui = DesktopUI(self)
+        self.agent_service.desktop.ui = self.desktop_ui.request
+        from .session_monitor import SessionMonitor
+        self.session_monitor = SessionMonitor(self.agent_service, self)
+        self.session_monitor.finished.connect(self._closed)
+        self.session_monitor.failed.connect(lambda message: self.assistant.feedback.setText(message))
+        self.session_monitor.start()
         self.agent_controller = AgentController(self.agent_service, self)
+        self.agent_controller.answer.connect(self.command_output.setPlainText)
+        self.controller.reply.connect(self.command_output.setPlainText)
         controller, ui = self.agent_controller, self.assistant
         self._approval_boxes = []
         self._pending_incoming = []
@@ -57,7 +69,6 @@ class AssistantBindings:
         self.controller.worker.commands = VoiceAgentProvider(self.agent_service, self.controller.worker, controller.worker, self.voice_bridge)
         ui.incognito.toggled.connect(lambda enabled:setattr(self.agent_service,'incognito',enabled))
         self.controller.agent_progress.connect(self._voice_agent_progress)
-        ui.send.clicked.connect(self._send_chat)
         ui.stop.clicked.connect(self._stop_agent)
         ui.select_files.clicked.connect(self._select_agent_files)
         ui.select_folder.clicked.connect(self._select_agent_folder)
@@ -86,17 +97,15 @@ class AssistantBindings:
         ui.model_save.clicked.connect(self._save_model)
         ui.server_start.clicked.connect(lambda: self._start_agent_task('start'))
         ui.model_pull.clicked.connect(self._pull_model)
-        ui.model_test.clicked.connect(lambda: self._start_agent_task('model_test'))
+        ui.model_test.clicked.connect(self._test_model_response)
+        ui.model_refresh.clicked.connect(self._check_model_connection)
         ui.hardware_test.clicked.connect(lambda: self._start_agent_task('hardware'))
         ui.profile_save.clicked.connect(self._save_profile)
         ui.app_add.clicked.connect(self._add_app)
         ui.app_remove.clicked.connect(self._remove_app)
         self._refresh_apps()
-        self._refresh_memory()
         self._refresh_calendar()
         self._refresh_skills()
-        self._restore_history()
-        self._profile_hints()
         if self.agent_service.store.warning:
             ui.feedback.setText(self.agent_service.store.warning)
         self._agent_poll = QTimer(self)
@@ -132,23 +141,12 @@ class AssistantBindings:
         busy = self.agent_controller.active or self.controller.active
         speaking = hasattr(self, 'background') and self.background.speech.active
         ui.stop.setEnabled(busy or speaking)
-        for control in (ui.send, ui.incognito, ui.select_files, ui.select_folder, ui.forget_files, ui.document_read_button,
+        for control in (ui.incognito, ui.select_files, ui.select_folder, ui.forget_files, ui.document_read_button,
                         ui.document_write_button, ui.model_save, ui.server_start, ui.model_pull, ui.model_test,
-                        ui.hardware_test, ui.connections_save, ui.search_test, ui.secret_delete_button, ui.profile_save,
+                        ui.hardware_test, ui.model_refresh, ui.connections_save, ui.search_test, ui.secret_delete_button, ui.profile_save,
                         ui.memory_save, ui.memory_delete, ui.memory_clear, ui.history_clear, ui.memory_enabled,
                         ui.event_create, ui.event_update, ui.event_delete, ui.app_add, ui.app_remove, *ui.bot_tests.values()):
             control.setEnabled(not busy and not self.agent_controller.closing)
-
-    def _send_chat(self):
-        text = self.assistant.input.toPlainText().strip()
-        if not text:
-            return
-        if has_secret(text, self.agent_service.memory.secret_values):
-            self.assistant.feedback.setText('Введите секрет во вкладке «Подключения». Запрос не отправлен.')
-            return
-        if self._start_agent_task('chat', text):
-            self.assistant.history.appendPlainText('Вы\n' + text + '\n')
-            self.assistant.input.clear()
 
     def _stop_agent(self):
         if hasattr(self, 'background'):
@@ -170,7 +168,6 @@ class AssistantBindings:
     def _voice_agent_progress(self, state, text):
         if self.controller.closing or self.controller.cancelling:
             return
-        self.voice.title.setText('Выполняю действие' if state in ('acting','checking') else 'Обрабатываю запрос')
         self.voice.set_operation(text)
         self.voice.mascot.set_state('acting' if state in ('acting','checking') else 'thinking')
         self.sidebar.logo.set_state(self.voice.mascot.state)
@@ -199,6 +196,8 @@ class AssistantBindings:
             self._pending_incoming.extend(data[:max(0, 20-len(self._pending_incoming))])
         elif kind in ('hardware','model_test'):
             self.assistant.hardware_display.setPlainText(json.dumps(data, ensure_ascii=False, indent=2))
+        elif kind == 'model_status':
+            self.assistant.model_status.setText(data)
         else:
             self.assistant.feedback.setText(str(data))
             if kind == 'tool':
@@ -220,9 +219,7 @@ class AssistantBindings:
                 self.background.celebrate()
         self._agent_controls()
         self._update_controls()
-        self._refresh_memory()
         self._refresh_skills()
-        self._profile_hints()
         if self._pending_incoming and not self.agent_controller.closing:
             incoming = self._pending_incoming.pop(0)
             QTimer.singleShot(0, lambda: self._start_agent_task('remote', incoming))
@@ -409,6 +406,7 @@ class AssistantBindings:
             box.open()
 
     def _refresh_skills(self):
+        from eidos.core.i18n import tr
         self.assistant.skills_list.clear()
         search_ready = True
         if self.agent_service.settings.search_provider == 'brave':
@@ -417,15 +415,19 @@ class AssistantBindings:
             except Exception:
                 search_ready = False
         for skill in catalog(self.agent_service.model_connected, search_ready):
-            item = QListWidgetItem(skill.name + '  ·  ' + skill.status)
+            if not skill.tools:
+                continue
+            item = QListWidgetItem(tr(skill.name) + '  ·  ' + tr(skill.status))
             item.setData(Qt.ItemDataRole.UserRole, skill)
             self.assistant.skills_list.addItem(item)
         self.assistant.skills_list.setCurrentRow(0)
 
     def _skill_selected(self, current, previous=None):
+        from eidos.core.i18n import tr
         if current:
             skill = current.data(Qt.ItemDataRole.UserRole)
-            self.assistant.skill_detail.setText(skill.purpose + '\nТребования: ' + skill.requirements + '\nИнструменты: ' + ', '.join(skill.tools) + '\nРазрешения: ' + ', '.join(skill.permissions))
+            self.assistant.skill_detail.setText(skill.purpose + '\nТребования: ' + skill.requirements +
+                '\nИнструменты: ' + ', '.join(skill.tools) + '\nРазрешения: ' + ', '.join(skill.permissions))
 
     def _save_connections(self):
         ui = self.assistant
@@ -457,8 +459,35 @@ class AssistantBindings:
 
     def _save_model(self):
         ui = self.assistant
-        self._save_agent_settings(replace(self.agent_service.settings, provider=ui.provider.currentData(), model=ui.model_name.text().strip(),
-            cloud_model=ui.cloud_model.text().strip(), ollama_url=ui.ollama_url.text().strip(), context_size=ui.context_size.value(), search_provider=ui.search_provider.currentData()))
+        if self.agent_controller.active or self.controller.active:
+            ui.model_status.setText('Дождитесь текущей операции.')
+            return False
+        settings = replace(self.agent_service.settings, provider=ui.provider.currentData(), model=ui.model_name.text().strip(),
+            cloud_model=ui.cloud_model.text().strip(), gemini_model=ui.gemini_model.text().strip(),
+            ollama_url=ui.ollama_url.text().strip(), context_size=ui.context_size.value(), search_provider=ui.search_provider.currentData())
+        try:
+            settings.validate()
+            if settings.provider == 'gemini' and ui.gemini_key.text().strip():
+                self.agent_service.secrets.set('gemini', ui.gemini_key.text())
+                ui.gemini_key.clear()
+        except Exception:
+            ui.model_status.setText('Не удалось сохранить модель или ключ Gemini. Проверьте поля и доступ к Credential Manager.')
+            return False
+        if self._save_agent_settings(settings):
+            self.agent_service.model_connected = False
+            ui.model_status.setText('Настройки модели изменены. Проверьте состояние сервиса и ответ модели.')
+            return True
+        return False
+
+    def _check_model_connection(self):
+        if self.assistant.provider.currentData() == 'gemini' and not self._save_model():
+            return
+        self._start_agent_task('model_status')
+
+    def _test_model_response(self):
+        if self.assistant.provider.currentData() == 'gemini' and not self._save_model():
+            return
+        self._start_agent_task('model_test')
 
     def _pull_model(self):
         model = self.agent_service.settings.model

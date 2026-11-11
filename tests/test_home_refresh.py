@@ -35,6 +35,7 @@ def test_sidebar_shortcut_roundtrip_and_content_expands(window, app):
     assert window.menu_button.toolTip() == 'Показать меню'
     window.menu_button.click()
     QTest.qWait(320)
+    wait_until(app, lambda: window.sidebar_animation.state().name == 'Stopped')
     assert not window.sidebar.isHidden()
     assert not window.store.load().sidebar_collapsed
 
@@ -46,7 +47,9 @@ def test_no_extra_title_strip_and_menu_button_stays_accessible(window, app):
     assert window.pages.y() == 0
     window.assistant.feedback.setText('Проверка сообщения службы')
     app.processEvents()
-    assert window.assistant.feedback.isVisible()
+    assert not window.assistant.feedback.isVisible()
+    assert window.toasts.notice.isVisible()
+    assert window.pages.y() == 0
     window.assistant.feedback.setText('')
     app.processEvents()
     assert window.pages.y() == 0
@@ -86,7 +89,7 @@ def test_menu_button_restores_sidebar_from_compact_mode(window, app):
 
 def test_home_motion_stops_when_hidden_minimized_or_disabled(window, app):
     assert window.home.motion_timer.isActive()
-    window.navigate(5)
+    window.navigate(6)
     assert not window.home.motion_timer.isActive()
     window.navigate(0)
     window.showMinimized()
@@ -103,12 +106,6 @@ def test_home_motion_stops_when_hidden_minimized_or_disabled(window, app):
 def test_home_request_uses_existing_chat_and_app_tool(window, monkeypatch):
     requests = []
     monkeypatch.setattr(window, '_start_agent_task', lambda kind, payload=None: requests.append((kind, payload)) or True)
-    window.home.input.setText('Объясни эту задачу')
-    window.home.send_button.click()
-    assert requests == [('chat', 'Объясни эту задачу')]
-    assert window.pages.currentIndex() == 5
-    assert 'Объясни эту задачу' in window.assistant.history.toPlainText()
-    assert not window.home.input.text()
     window.home.app_button.click()
     window.app_menu.actions()[0].trigger()
     assert requests[-1] == ('tool', ('open_notepad', {}))
@@ -129,9 +126,9 @@ def test_small_home_reflows_without_horizontal_overflow(window, app):
     QTest.qWait(350)
     assert window.home.scroll.horizontalScrollBar().maximum() == 0
     assert window.home.content.width() <= window.home.scroll.viewport().width()
-    assert window.home.input.width() > 160
+    assert window.home.isAncestorOf(window.voice.action_button)
     assert not window.windowIcon().isNull()
-    assert window.home.voice_button.height() >= 100
+    assert window.home.translate_button.height() >= 100
     assert window.home.app_button.height() >= 100
 
 
@@ -149,22 +146,29 @@ def test_system_reduced_motion_and_reset_sidebar(window, monkeypatch):
 
 def test_capture_and_voice_cards_use_existing_actions(window, monkeypatch):
     calls = []
-    monkeypatch.setattr(window, '_action', lambda: calls.append('voice'))
+    window.voice.action_requested.disconnect()
+    window.voice.action_requested.connect(lambda: calls.append('voice'))
     monkeypatch.setattr(window.translation, 'start_capture', lambda: calls.append('capture'))
-    window.home.voice_button.click()
-    assert calls == ['voice'] and window.pages.currentIndex() == 1
+    window.home.mic_button.setEnabled(True)
+    window.home.mic_button.click()
+    assert calls == ['voice'] and window.pages.currentIndex() == 0
     window.navigate(0)
     window.home.translate_button.click()
-    assert calls == ['voice', 'capture'] and window.pages.currentIndex() == 3
+    assert calls == ['voice', 'capture'] and window.pages.currentIndex() == 0
 
 
-def test_home_input_runs_real_local_agent_command(window, app):
-    window.config = replace(window.config, speak=False)
-    window.home.input.setText('Привет')
-    window.home.send_button.click()
-    wait_until(app, lambda: not window.agent_controller.active)
-    assert 'Привет! Я Eidos.' in window.assistant.history.toPlainText()
-    assert window.home.input.text() == ''
+def test_home_has_no_chat_controls_and_keeps_two_equal_actions(window, app):
+    from PyQt6.QtWidgets import QLineEdit
+    assert not window.home.findChildren(QLineEdit)
+    assert not hasattr(window.home, 'send_button')
+    assert not hasattr(window.home, 'voice_button')
+    assert window.sidebar.group.button(1) is None
+    assert len(window.sidebar.buttons) == 5
+    assert window.home.translate_button.width() == window.home.app_button.width()
+    assert window.home.mic_button is window.voice.action_button
+    window.controller.microphone_changed.emit('error', 'Permission denied')
+    assert 'Готов помочь' not in window.home.status.text()
+    assert window.voice.title.text() == 'Нет доступа к микрофону'
 
 
 @pytest.mark.parametrize('occupied_default', [False, True])

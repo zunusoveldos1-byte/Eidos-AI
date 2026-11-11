@@ -1,0 +1,77 @@
+{
+  "source": "Synthetic phrases; local SAPI, local Ollama, local Vosk; no user history/keys",
+  "unmeasured": [
+    "wake_detection: Porcupine key/model not supplied",
+    "audio_buffering: live microphone not activated"
+  ],
+  "errors": [],
+  "llm_model": "qwen3:4b-instruct-2507-q4_K_M",
+  "llm_initially_loaded": false,
+  "llm_last_native_metrics": {
+    "total_duration": 177087500,
+    "load_duration": 29743300,
+    "prompt_eval_count": 19,
+    "prompt_eval_duration": 27213000,
+    "eval_count": 5,
+    "eval_duration": 100607000,
+    "wall_seconds": 0.218
+  },
+  "stages": {
+    "wake_detection": {},
+    "audio_buffering": {},
+    "model_load": {
+      "cold": {
+        "count": 1,
+        "p50_ms": 1135.319,
+        "p95_ms": 1135.319,
+        "min_ms": 1135.319,
+        "max_ms": 1135.319
+      }
+    },
+    "stt": {},
+    "command_routing": {},
+    "llm_first_token": {
+      "warm": {
+        "count": 3,
+        "p50_ms": 125.0,
+        "p95_ms": 8450.0,
+        "min_ms": 109.0,
+        "max_ms": 9375.0
+      }
+    },
+    "tts": {
+      "cold": {
+        "count": 1,
+        "p50_ms": 329.213,
+        "p95_ms": 329.213,
+        "min_ms": 329.213,
+        "max_ms": 329.213
+      },
+      "warm": {
+        "count": 5,
+        "p50_ms": 49.934,
+        "p95_ms": 52.036,
+        "min_ms": 41.771,
+        "max_ms": 52.516
+      }
+    },
+    "stt_chunk": {
+      "warm": {
+        "count": 256,
+        "p50_ms": 0.125,
+        "p95_ms": 41.864,
+        "min_ms": 0.004,
+        "max_ms": 253.768
+      }
+    },
+    "stt_finalization": {
+      "warm": {
+        "count": 6,
+        "p50_ms": 25.516,
+        "p95_ms": 113.171,
+        "min_ms": 22.764,
+        "max_ms": 138.032
+      }
+    }
+  }
+}

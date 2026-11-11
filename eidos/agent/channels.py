@@ -23,6 +23,8 @@ class BotAdapter:
         self.after = {}
 
     def api(self, path, *, body=None, context=None):
+        from .memory import require_public_payload
+        require_public_payload(body, context.secret_values if context else ())
         token = self.secrets.get(self.kind)
         if not token:
             raise ValueError('Токен бота не задан')

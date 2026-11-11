@@ -21,10 +21,16 @@ class AppConfig:
     microphone: int | None = None
     microphone_name: str | None = None
     whisper_model: str = 'base'
+    stt_engine: str = 'whisper'
+    vosk_model_path: str = ''
     device: str = 'cpu'
     speak: bool = True
     tts_voice: str = 'ru-RU-SvetlanaNeural'
     always_on_top: bool = False
+    startup_enabled: bool = False
+    ui_language: str = 'ru'
+    theme: str = 'dark'
+    accent_color: str = '#25E6A1'
     mascot_animation: bool = True
     translation_hotkeys_enabled: bool = True
     translation_capture_hotkey: str = 'Ctrl+Alt+T'
@@ -79,6 +85,13 @@ class AppConfig:
     gesture_emergency_hotkey: str = 'Ctrl+Alt+G'
 
     def validate(self) -> None:
+        import re
+        if (type(self.startup_enabled) is not bool or self.ui_language not in ('ru', 'en', 'ky', 'uz', 'kk')
+                or self.theme not in ('dark', 'light') or not isinstance(self.accent_color, str)
+                or not re.fullmatch(r'#[0-9a-fA-F]{6}', self.accent_color)):
+            raise ValueError('Некорректные настройки запуска, языка или темы.')
+        if self.stt_engine not in ('whisper', 'vosk') or not isinstance(self.vosk_model_path, str):
+            raise ValueError('Некорректный движок распознавания или путь Vosk.')
         if self.gesture_hand not in ('Right','Left') or self.gesture_mode not in ('auto','volume','media','cursor'):
             raise ValueError('Неизвестный режим или ведущая рука')
         for name in ('gesture_camera','gesture_monitor','gesture_emergency_hotkey'):

@@ -13,7 +13,8 @@ def main() -> int:
     parser.add_argument('--play', action='store_true', help='Воспроизвести тестовый ответ (включает --tts)')
     args = parser.parse_args()
     print('Python:', sys.version.split()[0])
-    for name in ('PyQt6.QtWidgets', 'PyQt6.QtMultimedia', 'numpy', 'sounddevice', 'faster_whisper', 'edge_tts'):
+    for name in ('PyQt6.QtWidgets', 'PyQt6.QtMultimedia', 'numpy', 'sounddevice',
+                 'faster_whisper', 'edge_tts', 'vosk', 'onnxruntime', 'miniaudio'):
         importlib.import_module(name)
         print('Import OK:', name)
     import ctranslate2
@@ -25,12 +26,12 @@ def main() -> int:
         return 0
     from eidos.modules.voice.tts import EdgeTTS
 
-    path: Path | None = None
+    audio = None
     try:
-        path = EdgeTTS().synthesize('Привет! Это проверка голоса Eidos.', 'ru-RU-SvetlanaNeural', Event())
-        if path is None:
+        audio = EdgeTTS().synthesize('Привет! Это проверка голоса Eidos.', 'ru-RU-SvetlanaNeural', Event())
+        if audio is None:
             raise RuntimeError('Синтез отменён')
-        print('TTS OK: bytes =', path.stat().st_size)
+        print('TTS OK: PCM bytes =', len(audio.data))
         if args.play:
             from PyQt6.QtCore import QTimer
             from PyQt6.QtWidgets import QApplication
@@ -46,7 +47,7 @@ def main() -> int:
             player.finished.connect(finished)
             player.error.connect(lambda message: (print(message), app.quit()))
             QTimer.singleShot(15000, app.quit)
-            QTimer.singleShot(0, lambda: player.play(path))
+            QTimer.singleShot(0, lambda: player.play(audio))
             app.exec()
             player.dispose()
             return result[0]
@@ -54,9 +55,6 @@ def main() -> int:
     except Exception as exc:
         print('TTS/runtime error:', type(exc).__name__, str(exc)[:300])
         return 1
-    finally:
-        if path:
-            path.unlink(missing_ok=True)
 
 
 if __name__ == '__main__':

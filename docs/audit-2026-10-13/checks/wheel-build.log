@@ -1,0 +1,9 @@
+Processing .\.
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: eidos-desktop
+  Building wheel for eidos-desktop (pyproject.toml): started
+  Building wheel for eidos-desktop (pyproject.toml): finished with status 'done'
+  Created wheel for eidos-desktop: filename=eidos_desktop-0.1.0-py3-none-any.whl size=5583456 sha256=623d29070449f30d36537dc0607e9eb3752751fc97dbc86ebe611dd5fb689fb5
+  Stored in directory: C:\Users\Элдос\AppData\Local\Temp\pip-ephem-wheel-cache-hdo5p3hm\wheels\0c\3e\9a\f6e1a0d51167f7ef9f45ae5666c4c3411dabf785b7b118f4e7
+Successfully built eidos-desktop

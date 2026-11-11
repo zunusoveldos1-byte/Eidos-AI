@@ -9,7 +9,8 @@ def test_mode_toggle_greeting_resume_and_collapse(app, tmp_path, monkeypatch):
         b.timer.stop()
         w.controller.discovering = False
         calls, spoken = [], []
-        monkeypatch.setattr(w.controller, 'start', lambda c: calls.append(c))
+        from dataclasses import replace
+        monkeypatch.setattr(b, '_start_latched_input', lambda: calls.append(replace(w.config, continuous_listening=True)))
         monkeypatch.setattr(b, 'speak', lambda text, **kw: spoken.append(text) or True)
         b.voice_action()
         assert b.listen_enabled and calls[-1].continuous_listening

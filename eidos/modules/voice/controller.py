@@ -20,10 +20,13 @@ class VoiceController(QObject):
     agent_progress = pyqtSignal(str, str)
     closed = pyqtSignal()
     level = pyqtSignal(float)
+    speech_activity = pyqtSignal(float, bool)
     microphone_changed = pyqtSignal(str, str)
     start_requested = pyqtSignal(object, object)
     devices_requested = pyqtSignal()
     audio_requested = pyqtSignal(object, object, object, str, bool)
+    release_microphone = pyqtSignal()
+    input_stop_requested = pyqtSignal()
 
     def __init__(self, cache: Path, parent: QObject | None = None,
                  worker: VoiceWorker | None = None) -> None:
@@ -35,12 +38,14 @@ class VoiceController(QObject):
         self.cancelling = False
         self.microphone_state = 'inactive'
         self.thread = QThread(self)
+        self.thread.setObjectName('EidosVoice')
         self.worker = worker or VoiceWorker()
         self.worker.moveToThread(self.thread)
         self.playback = AudioPlayback(self)
         self.start_requested.connect(self.worker.run_cycle)
         self.audio_requested.connect(self.worker.run_audio)
         self.devices_requested.connect(self.worker.refresh_devices)
+        self.release_microphone.connect(self.worker.close_recorder)
         self.worker.progress.connect(self._progress)
         self.worker.transcript.connect(self._transcript)
         self.worker.reply.connect(self._reply)
@@ -51,9 +56,12 @@ class VoiceController(QObject):
         self.worker.devices_error.connect(self._devices_error)
         self.worker.agent_progress.connect(self.agent_progress)
         self.worker.level.connect(self.level)
+        self.worker.speech_activity.connect(self.speech_activity)
         self.worker.microphone_changed.connect(self._microphone_changed)
+        self.worker.input_stop_requested.connect(self.input_stop_requested)
         self.playback.finished.connect(self._playback_finished)
         self.playback.error.connect(self._error)
+        self.thread.finished.connect(self.worker.close_recorder)
         self.thread.finished.connect(self.worker.deleteLater)
         self.thread.finished.connect(self._thread_finished)
         self.thread.start()
@@ -102,12 +110,13 @@ class VoiceController(QObject):
         self.cancelling = self.active
         self.worker.cancel_event.set()
         self.worker.stop_event.set()
+        self.release_microphone.emit()
         self._microphone_changed('inactive', '')
         self.playback.stop()
         if not self.active:
             self._set_state(State.IDLE, 'Готов')
 
-    def start_audio(self, config: AppConfig, audio, recording_id: str) -> None:
+    def start_audio(self, config: AppConfig, audio, recording_id: str, *, wake=True) -> None:
         if self.closing or self.active or self.discovering or self.playback.active:
             return
         config.validate()
@@ -119,7 +128,7 @@ class VoiceController(QObject):
         self.active = True
         self._set_state(State.STARTING, 'Команда с ключевым словом записана')
         self._set_state(State.RECORDING, 'Обрабатываю')
-        self.audio_requested.emit(config, self.cache, audio, recording_id, True)
+        self.audio_requested.emit(config, self.cache, audio, recording_id, wake)
 
     def refresh_devices(self) -> None:
         if self.closing or self.active or self.discovering or self.playback.active:
@@ -150,9 +159,8 @@ class VoiceController(QObject):
             self.reply.emit(text)
 
     @pyqtSlot(object)
-    def _audio(self, path: Path) -> None:
+    def _audio(self, path) -> None:
         if self.closing or self.cancelling:
-            path.unlink(missing_ok=True)
             return
         self._set_state(State.PLAYING, 'Воспроизведение ответа…')
         self.playback.play(path)
@@ -176,12 +184,14 @@ class VoiceController(QObject):
             self.machine.transition(State.IDLE)
             self.state_changed.emit('idle', 'Ошибка. Можно повторить запись; подробности в журнале.')
         elif not self.playback.active:
-            self._set_state(State.IDLE, 'Готово. Нажмите «Начать запись».')
+            self._set_state(State.IDLE, 'Готов' if self.worker.current_config.continuous_listening
+                            else 'Готово. Нажмите «Начать запись».')
 
     @pyqtSlot()
     def _playback_finished(self) -> None:
         if not self.closing:
-            self._set_state(State.IDLE, 'Готово. Нажмите «Начать запись».')
+            self._set_state(State.IDLE, 'Готов' if self.worker.current_config.continuous_listening
+                            else 'Готово. Нажмите «Начать запись».')
 
     @pyqtSlot(object)
     def _devices(self, devices: object) -> None:
@@ -203,6 +213,7 @@ class VoiceController(QObject):
         self.worker.stop_event.set()
         self._microphone_changed('inactive', '')
         self.playback.dispose()
+        self.release_microphone.emit()
         self.thread.quit()
         if not self.thread.isRunning():
             QTimer.singleShot(0, self.closed.emit)

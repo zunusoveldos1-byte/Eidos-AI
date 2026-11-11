@@ -2,7 +2,6 @@
 
 from collections import deque
 from copy import copy
-from pathlib import Path
 from threading import Event
 
 from PyQt6.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
@@ -34,12 +33,13 @@ class _SynthesisWorker(QObject):
                     raise ValueError('Неизвестный провайдер речи.')
                 provider = SapiTTS() if provider_name == 'sapi' else EdgeTTS()
                 voice = getattr(config, 'sapi_voice', '') if provider_name == 'sapi' else config.tts_voice
-                path = provider.synthesize(text, voice, cancel,
-                                           rate=speech_rate(config), volume=100)
+                from eidos.core.metrics import METRICS
+                with METRICS.measure('tts'):
+                    path = provider.synthesize(text, voice, cancel,
+                                               rate=speech_rate(config), volume=100)
         except Exception as exc:
             error = f'Не удалось озвучить ответ: {exc}'
         if cancel.is_set() and path:
-            Path(path).unlink(missing_ok=True)
             path = None
         self.result.emit(cancel, path, error)
 
@@ -62,6 +62,7 @@ class SpeechQueue(QObject):
         self._playing = False
         self._closing = False
         self._thread = QThread(self)
+        self._thread.setObjectName('EidosSpeech')
         self._worker = _SynthesisWorker()
         self._worker.moveToThread(self._thread)
         self._request.connect(self._worker.synthesize)
@@ -104,12 +105,20 @@ class SpeechQueue(QObject):
     def enqueue(self, text: str, config) -> bool:
         if self._closing or len(text) > self.MAX_CHARACTERS:
             return False
+        if getattr(config, 'tts_provider', 'edge') == 'edge':
+            from eidos.agent.memory import has_secret
+            service = getattr(self.parent(), 'agent_service', None)
+            values = service.memory.secret_values if service else ()
+            if has_secret(text, values):
+                self.state_changed.emit('error', 'Обнаружен возможный секрет. Внешняя отправка отменена.')
+                return False
         sentences = split_sentences(prepare_speech(text, getattr(config, 'voice_response_brief', False)))
         outstanding = len(self._pending) + int(self._inflight is not None) + int(self._playing)
-        if not sentences or outstanding + len(sentences) > self.MAX_SENTENCES:
+        if not sentences or len(sentences) > self.MAX_SENTENCES or outstanding + 1 > self.MAX_SENTENCES:
             return False
         snapshot = copy(config)
-        self._pending.extend((sentence, snapshot) for sentence in sentences)
+        # One response owns one synthesis/playback, preserving sentence prosody.
+        self._pending.append((' '.join(sentences), snapshot))
         self._start_next()
         return True
 
@@ -125,8 +134,6 @@ class SpeechQueue(QObject):
     @pyqtSlot(object, object, str)
     def _result(self, cancel, path, error) -> None:
         if cancel is not self._inflight or cancel.is_set() or self._closing:
-            if path:
-                Path(path).unlink(missing_ok=True)
             if cancel is self._inflight:
                 self._inflight = None
             self._start_next()
@@ -139,7 +146,7 @@ class SpeechQueue(QObject):
             if hasattr(self.playback, 'set_volume'):
                 self.playback.set_volume(max(0, min(100, getattr(self._current_config, 'tts_volume', 100))))
             self._playing = True
-            self.playback.play(Path(path))
+            self.playback.play(path)
             if self._playing:  # A synchronous player error already clears this.
                 self.state_changed.emit('playing', 'Говорю…')
         else:

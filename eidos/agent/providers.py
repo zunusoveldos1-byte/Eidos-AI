@@ -38,7 +38,7 @@ class OllamaProvider:
 
     def chat(self, messages, tools, context):
         context.check()
-        started = time.monotonic()
+        started = time.perf_counter()
         self.metrics = {}
         result = {'role': 'assistant', 'content': ''}
         body = {'model': self.settings.model, 'messages': messages, 'tools': tools,
@@ -52,6 +52,16 @@ class OllamaProvider:
         import httpx
 
         async def receive():
+            first_token = False
+            def record_first_token():
+                nonlocal first_token
+                if not first_token and result['content']:
+                    from eidos.core.metrics import METRICS, report_llm_latency
+                    elapsed_ms = (time.perf_counter() - started) * 1000
+                    METRICS.observe('llm_first_token', elapsed_ms)
+                    self.metrics['first_token_ms'] = elapsed_ms
+                    report_llm_latency(elapsed_ms)
+                    first_token = True
             timeout = httpx.Timeout(min(120, context.remaining), connect=5)
             async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
                 async with client.stream('POST', self.settings.ollama_url.rstrip('/') + '/api/chat', json=body) as response:
@@ -68,10 +78,15 @@ class OllamaProvider:
                         while b'\n' in pending:
                             line, _, rest = pending.partition(b'\n')
                             pending = bytearray(rest)
-                            if self._consume(line, result):
+                            done = self._consume(line, result)
+                            record_first_token()
+                            if done:
                                 return result
-                    if pending and self._consume(pending, result):
-                        return result
+                    if pending:
+                        done = self._consume(pending, result)
+                        record_first_token()
+                        if done:
+                            return result
                     raise RuntimeError('Ollama прервал ответ до завершения. Повторите запрос.')
 
         task = asyncio.create_task(receive())
@@ -81,7 +96,7 @@ class OllamaProvider:
                 await asyncio.wait({task}, timeout=.05)
             context.check()
             answer = await task
-            self.metrics['wall_seconds'] = round(time.monotonic() - started, 3)
+            self.metrics['wall_seconds'] = round(time.perf_counter() - started, 3)
             return answer
         except httpx.HTTPError:
             context.check()
@@ -102,7 +117,7 @@ class OllamaProvider:
         if message.get('tool_calls'):
             result.setdefault('tool_calls', []).extend(message['tool_calls'])
         if chunk.get('done'):
-            self.metrics = {k: chunk.get(k) for k in ('total_duration', 'load_duration', 'prompt_eval_count', 'prompt_eval_duration', 'eval_count', 'eval_duration')}
+            self.metrics.update({k: chunk.get(k) for k in ('total_duration', 'load_duration', 'prompt_eval_count', 'prompt_eval_duration', 'eval_count', 'eval_duration')})
             return True
         return False
 
@@ -112,6 +127,8 @@ class OpenAIProvider:
         self.settings, self.secrets = settings, secrets
 
     def chat(self, messages, tools, context):
+        from .memory import require_public_payload
+        require_public_payload({'messages': messages, 'tools': tools}, context.secret_values)
         key = self.secrets.get('openai')
         if not key:
             raise ValueError('Введите OpenAI API key в «Подключениях»')
@@ -133,7 +150,12 @@ class OpenAIProvider:
 
 
 def provider_for(settings, secrets):
-    return OpenAIProvider(settings, secrets) if settings.provider == 'openai' else OllamaProvider(settings)
+    if settings.provider == 'gemini':
+        from .gemini import GeminiProvider
+        return GeminiProvider(settings, secrets)
+    if settings.provider == 'openai':
+        return OpenAIProvider(settings, secrets)
+    return OllamaProvider(settings)
 
 
 def start_ollama(project: Path):
@@ -176,6 +198,8 @@ def pull_model(settings, context):
                 if not line:
                     continue
                 info = json.loads(line)
+                if info.get('total', 0) > 8 * 1024 ** 3:
+                    raise ValueError('Модель превышает лимит загрузки 8 ГБ. Выберите меньшую модель.')
                 if info.get('error'):
                     raise RuntimeError('Не удалось загрузить модель')
                 status = info.get('status', '')

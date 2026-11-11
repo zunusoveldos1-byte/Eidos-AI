@@ -19,3 +19,28 @@ agent.json
 artifacts/
 bin/
 obj/
+
+# Local credentials and environment overrides (keep templates versioned).
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Python tooling and local test/coverage output.
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Temporary files and runtime logs.
+*.tmp
+*.temp
+*.bak
+*.log
+# Historical audit logs are intentional documentation evidence.
+!docs/audit-*/checks/*.log

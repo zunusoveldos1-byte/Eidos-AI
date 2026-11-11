@@ -36,15 +36,15 @@ def main():
     QTest.qWait(200)
     try:
         metrics = []
-        for page_id, slug in ((0, 'home'), (5, 'dialogue'), (1, 'voice'), (3, 'screen'),
-                              (2, 'camera'), (6, 'tools'), (7, 'memory'), (4, 'settings')):
+        for page_id, slug in ((0, 'home'), (1, 'voice'), (3, 'screen'),
+                              (2, 'camera'), (6, 'tools'), (4, 'settings')):
             window.navigate(page_id)
             QTest.qWait(80)
             pixmap = window.grab()
             pixmap.save(str(output / (slug + '.png')))
             metrics.append({'page': slug, 'size': [window.width(), window.height()],
                             'dpr': pixmap.devicePixelRatioF()})
-        window.navigate(5)
+        window.navigate(6)
         window.assistant.history.setPlainText('Вы\nОбъясни выбранный текст.\n\nEidos\nЗдесь будет ответ по фактически полученным данным.')
         window.resize(1100, 740)
         frames = []

@@ -1,0 +1,38 @@
+[
+  {
+    "case": "1920-1080-translation",
+    "vertical": 0
+  },
+  {
+    "case": "1920-1080-camera-0",
+    "vertical": 0
+  },
+  {
+    "case": "1920-1080-camera-1",
+    "vertical": 0
+  },
+  {
+    "case": "1200-800-translation",
+    "vertical": 0
+  },
+  {
+    "case": "1200-800-camera-0",
+    "vertical": 0
+  },
+  {
+    "case": "1200-800-camera-1",
+    "vertical": 0
+  },
+  {
+    "case": "780-560-translation",
+    "vertical": 0
+  },
+  {
+    "case": "780-560-camera-0",
+    "vertical": 98
+  },
+  {
+    "case": "780-560-camera-1",
+    "vertical": 466
+  }
+]

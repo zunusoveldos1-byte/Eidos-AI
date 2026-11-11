@@ -1,0 +1,76 @@
+{
+  "model": "qwen3:4b-instruct-2507-q4_K_M",
+  "context_size": 2048,
+  "runs": [
+    {
+      "synthetic_prompt": "Поздоровайся на русском одной короткой фразой.",
+      "response": {
+        "role": "assistant",
+        "content": "Здравствуйте!"
+      },
+      "seconds": 9.594,
+      "metrics": {
+        "total_duration": 9282864800,
+        "load_duration": 8942357300,
+        "prompt_eval_count": 26,
+        "prompt_eval_duration": 114479000,
+        "eval_count": 8,
+        "eval_duration": 189940000,
+        "wall_seconds": 9.594
+      }
+    },
+    {
+      "synthetic_prompt": "Покажи календарь: вызови calendar_list.",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "X7tT0qGyOPzZoQegLOUFQWWHHxRno5KU",
+            "function": {
+              "index": 0,
+              "name": "calendar_list",
+              "arguments": {}
+            }
+          }
+        ]
+      },
+      "seconds": 0.875,
+      "metrics": {
+        "total_duration": 845476800,
+        "load_duration": 51528100,
+        "prompt_eval_count": 149,
+        "prompt_eval_duration": 101914000,
+        "eval_count": 16,
+        "eval_duration": 368910000,
+        "wall_seconds": 0.875
+      }
+    }
+  ],
+  "running_models_after": {
+    "models": [
+      {
+        "name": "qwen3:4b-instruct-2507-q4_K_M",
+        "model": "qwen3:4b-instruct-2507-q4_K_M",
+        "size": 2874062929,
+        "digest": "0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "qwen3",
+          "families": [
+            "qwen3"
+          ],
+          "parameter_size": "4.0B",
+          "quantization_level": "Q4_K_M"
+        },
+        "expires_at": "2026-10-13T22:36:34.4671974+06:00",
+        "size_vram": 2874062929,
+        "context_length": 2048,
+        "runner": "llamacpp"
+      }
+    ]
+  },
+  "tool_calls_executed": false,
+  "user_profile_or_memory_sent": false
+}

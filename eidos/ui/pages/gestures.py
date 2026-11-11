@@ -1,19 +1,13 @@
 """Local camera/gesture workspace with transient control permission."""
 
 from dataclasses import replace
-from PyQt6.QtCore import Qt, pyqtSignal, QSignalBlocker, QTimer
-from PyQt6.QtGui import QPainter, QImage, QKeySequence
-from PyQt6.QtWidgets import (
-    QWidget,
-    QFormLayout,
-    QCheckBox,
-    QDoubleSpinBox,
-    QSpinBox,
-    QKeySequenceEdit,
-    QGroupBox,
-)
-from ..components import Card, Page, ResponsiveRow, button, combo, label
+from PyQt6.QtCore import Qt, pyqtSignal, QSignalBlocker, QTimer, QRectF
+from PyQt6.QtGui import QPainter, QPainterPath, QImage, QKeySequence, QColor
+from PyQt6.QtWidgets import QFormLayout, QKeySequenceEdit
+from eidos.ui.localized import QWidget, QCheckBox, QDoubleSpinBox, QSpinBox, QGroupBox
+from ..components import Card, Page, ResponsiveRow, Toggle, button, combo, label
 from eidos.core.config import AppConfig, data_dir
+from eidos.core.i18n import tr
 from eidos.modules.vision.logic import GestureSettings, pinch_ratio
 from eidos.modules.vision.actions import monitors
 from eidos.modules.vision.service import CameraGestureService
@@ -33,10 +27,14 @@ class CameraPreview(QWidget):
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.fillRect(self.rect(), Qt.GlobalColor.black)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        clip = QPainterPath()
+        clip.addRoundedRect(QRectF(self.rect()), 12, 12)
+        painter.setClipPath(clip)
+        painter.fillRect(self.rect(), QColor('#0F1714'))
         if not self.image.isNull():
             size = self.image.size()
-            size.scale(self.size(), Qt.AspectRatioMode.KeepAspectRatio)
+            size.scale(self.size(), Qt.AspectRatioMode.KeepAspectRatioByExpanding)
             from PyQt6.QtCore import QRect
 
             target = QRect(
@@ -49,8 +47,24 @@ class CameraPreview(QWidget):
         else:
             painter.setPen(Qt.GlobalColor.gray)
             painter.drawText(
-                self.rect(), Qt.AlignmentFlag.AlignCenter, "Камера выключена"
+                self.rect(), Qt.AlignmentFlag.AlignCenter, tr("Камера выключена")
             )
+
+    def position_badges(self):
+        for attribute in ('gesture_badge', 'metrics_badge'):
+            badge = getattr(self, attribute, None)
+            if badge:
+                badge.adjustSize()
+                badge.move(12 if attribute == 'gesture_badge' else max(12, self.width() - badge.width() - 12), 12)
+
+    def resizeEvent(self, event):
+        self.position_badges()
+        if hasattr(self, 'toolbar'):
+            self.toolbar.reflow(self.width())
+            self.toolbar.adjustSize()
+            self.toolbar.move(max(8, (self.width() - self.toolbar.width()) // 2),
+                              max(8, self.height() - self.toolbar.height() - 20))
+        super().resizeEvent(event)
 
 
 def decimal(value, low, high, step=0.05):
@@ -62,6 +76,7 @@ def decimal(value, low, high, step=0.05):
 
 
 class GesturesPage(Page):
+    notice = pyqtSignal(str)
     status_changed = pyqtSignal(str)
     preferences_changed = pyqtSignal(dict)
     stopped = pyqtSignal()
@@ -114,7 +129,7 @@ class GesturesPage(Page):
         self.body.addWidget(card)
         actions = Card()
         actions.heading("Управление", "settings")
-        self.control = QCheckBox("Разрешить управление компьютером")
+        self.control = Toggle("Разрешить управление компьютером")
         self.control.setEnabled(False)
         self.mode = combo()
         for title, value in [
@@ -143,6 +158,9 @@ class GesturesPage(Page):
             )
         )
         self.body.addWidget(actions)
+        self.details_button = button('Параметры и калибровка', 'settings')
+        self.details_button.setCheckable(True)
+        self.body.addWidget(self.details_button)
         calibration = Card()
         calibration.heading("Калибровка", "settings")
         self.calibration_text = label(
@@ -217,9 +235,15 @@ class GesturesPage(Page):
             control.setAccessibleName(title)
             form.addRow(title, control)
         self.body.addWidget(self.parameters)
+        calibration.hide()
+        self.parameters.hide()
+        self.details_button.toggled.connect(calibration.setVisible)
+        self.details_button.toggled.connect(self.parameters.setVisible)
         self.save_button = button("Сохранить параметры", None, True)
         self.body.addWidget(self.save_button)
-        self.feedback = label("", "muted")
+        from .assistant import FeedbackLabel
+        self.feedback = FeedbackLabel()
+        self.feedback.notification.connect(self.notice.emit)
         self.body.addWidget(self.feedback)
         self.body.addWidget(
             label(
@@ -246,6 +270,8 @@ class GesturesPage(Page):
         self.service.control_failed.connect(self._control_failed)
         self.service.stopped.connect(self._stopped)
         self.service.cameras_ready.connect(self._devices_ready)
+        from .gestures_layout import rebuild
+        rebuild(self)
         self.refresh_devices(initial=True)
 
     @property
@@ -287,6 +313,11 @@ class GesturesPage(Page):
         if not self._inventory_requested:
             QTimer.singleShot(0, self.refresh_devices)
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, '_resize_preview'):
+            self._resize_preview(self.details_button.isChecked())
+
     def _devices_ready(self, devices):
         self._devices = devices
         self._inventory_ready = True
@@ -305,7 +336,7 @@ class GesturesPage(Page):
             self.camera_status.setText("Камера выключена")
         self.camera_button.setEnabled(bool(devices))
         self.refresh_button.setEnabled(True)
-        self.status_changed.emit(self.camera_status.text())
+        self.status_changed.emit(self.camera_status.source_text())
         index = self.camera.findData(self.config.gesture_camera)
         if index >= 0:
             self.camera.setCurrentIndex(index)
@@ -461,7 +492,7 @@ class GesturesPage(Page):
         self.refresh_button.setEnabled(False)
         self.parameters.setEnabled(False)
         self.save_button.setEnabled(False)
-        self.camera_button.setText("Выключить камеру")
+        self._camera_button_state(True)
         width, height = self.resolution.currentData()
         device = self._devices[self.camera.currentIndex()]
         self.service.start(
@@ -475,10 +506,23 @@ class GesturesPage(Page):
 
     def _camera_status(self, text):
         self.camera_status.setText(text)
+        self.preview.setToolTip(text)
+        self.notice.emit(text)
         self.status_changed.emit(text)
         if "недоступен" in text and not self._active:
             self.refresh_button.setEnabled(True)
             self.camera_button.setEnabled(False)
+
+    def _camera_button_state(self, active):
+        from ..icons import icon
+        self.camera_button.setText('')
+        title = "Выключить камеру" if active else "Включить камеру"
+        self.camera_button.setToolTip(title)
+        self.camera_button.setAccessibleName(title)
+        self.camera_button.setIcon(icon('stop' if active else 'camera', '#E2E8F0'))
+        self.camera_button.setProperty('active', active)
+        self.camera_button.style().unpolish(self.camera_button)
+        self.camera_button.style().polish(self.camera_button)
 
     def _refresh_control(self):
         allowed = (
@@ -522,6 +566,7 @@ class GesturesPage(Page):
     def _control_failed(self, message):
         self.emergency_stop()
         self.action_status.setText(message)
+        self.notice.emit(message)
         self._refresh_control()
 
     def _result(self, result):
@@ -536,9 +581,8 @@ class GesturesPage(Page):
         self.gesture_status.setText(
             "Жест: " + names.get(result.gesture, "неопределённый")
         )
-        self.metrics.setText(
-            f"Обработка: {result.fps:.1f} FPS · кадр → распознавание: {result.latency_ms:.0f} мс"
-        )
+        self.metrics.setText(f"{result.fps:.0f} FPS | {result.latency_ms:.0f} мс")
+        self.preview.position_badges()
         self.volume_status.setText(
             f"Системная громкость: {result.volume:.0f}%"
             if result.volume is not None
@@ -660,10 +704,11 @@ class GesturesPage(Page):
         self.refresh_button.setEnabled(True)
         self.parameters.setEnabled(True)
         self.save_button.setEnabled(True)
-        self.camera_button.setText("Включить камеру")
+        self._camera_button_state(False)
         self.camera_button.setEnabled(bool(self._devices))
         self.control.setEnabled(False)
         self.preview.set_image(QImage())
         self.hand_status.setText("Покажите руку")
-        self.metrics.setText("Камера выключена")
+        self.metrics.setText('— FPS | — мс')
+        self.preview.position_badges()
         self.stopped.emit()

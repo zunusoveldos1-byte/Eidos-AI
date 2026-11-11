@@ -1,0 +1,11 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.17, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\Элдос\Desktop\Eidos\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Элдос\Desktop\Eidos
+configfile: pyproject.toml
+plugins: anyio-4.15.1, platformdirs-4.12.4
+collecting ... collected 1 item
+
+tests/test_jonsnow_integration.py::test_close_waits_for_translation_and_agent_and_releases_hotkeys PASSED
+
+============================== 1 passed in 1.27s ==============================

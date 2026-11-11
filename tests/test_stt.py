@@ -35,7 +35,14 @@ def test_model_cache_and_cpu_int8_without_downloading(monkeypatch, tmp_path, cac
     monkeypatch.setitem(sys.modules, 'faster_whisper.utils', SimpleNamespace(download_model=download_model))
     monkeypatch.setitem(sys.modules, 'huggingface_hub.errors', SimpleNamespace(LocalEntryNotFoundError=CacheMiss))
     engine = WhisperSTT()
+    monkeypatch.setattr('huggingface_hub.constants.HF_HUB_CACHE', str(tmp_path / 'absent'))
     audio = np.ones(16000, dtype=np.float32)
+    if not cached:
+        with pytest.raises(ValueError, match='локал'):
+            engine.transcribe(audio, AppConfig(), tmp_path, lambda *args: statuses.append(args), threading.Event())
+        assert calls == [True]
+        assert constructors == []
+        return
     for _ in range(2):
         assert engine.transcribe(audio, AppConfig(), tmp_path, lambda *args: statuses.append(args), threading.Event()) == 'Привет'
     assert calls == ([True] if cached else [True, False])

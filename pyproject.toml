@@ -27,7 +27,8 @@ dependencies = [
 [project.optional-dependencies]
 gestures = ["mediapipe==1.1.0", "opencv-contrib-python==4.14.0.94", "cv2-enumerate-cameras==1.4.0", "numpy==2.4.6", "pycaw==20260927; sys_platform == 'win32'", "comtypes==1.4.17; sys_platform == 'win32'"]
 wake = ["pvporcupine>=3,<5"]
-voice = ["numpy>=1.26,<3", "sounddevice>=0.5,<0.6", "faster-whisper>=1.1,<2", "edge-tts>=7,<8", "comtypes>=1.4,<2; sys_platform == 'win32'"]
+vosk = ["vosk==0.3.45"]
+voice = ["numpy>=1.26,<3", "sounddevice>=0.5,<0.6", "faster-whisper>=1.1,<2", "edge-tts>=7,<8", "onnxruntime>=1.16,<2", "miniaudio>=1.61,<2", "comtypes>=1.4,<2; sys_platform == 'win32'"]
 dev = ["pytest>=8,<10"]
 agent = ["httpx>=0.28,<1", "python-docx>=1.2,<2", "openpyxl>=3.1,<4", "pypdf>=6,<7", "reportlab>=4,<5", "pycaw>=20240210; sys_platform == 'win32'", "psutil>=7,<8", "keyring>=25,<27"]
 
@@ -35,7 +36,7 @@ agent = ["httpx>=0.28,<1", "python-docx>=1.2,<2", "openpyxl>=3.1,<4", "pypdf>=6,
 include = ["eidos*"]
 
 [tool.setuptools.package-data]
-eidos = ["assets/*.png", "assets/fonts/*.ttf", "assets/fonts/*.txt", "assets/icons/*.svg"]
+eidos = ["assets/*.png", "assets/fonts/*.ttf", "assets/fonts/*.txt", "assets/icons/*.svg", "assets/i18n/*.json", "assets/models/*.onnx", "assets/models/*.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

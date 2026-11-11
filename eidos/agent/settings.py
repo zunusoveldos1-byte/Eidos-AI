@@ -18,6 +18,7 @@ class AgentSettings:
     model: str = 'qwen3:4b-instruct-2507-q4_K_M'
     ollama_url: str = 'http://127.0.0.1:11434'
     cloud_model: str = 'gpt-4.1-mini'
+    gemini_model: str = 'gemini-2.5-flash'
     context_size: int = 4096
     memory_enabled: bool = False
     onboarding_done: bool = False
@@ -26,7 +27,8 @@ class AgentSettings:
     professions: list[str] = field(default_factory=list)
     tasks: str = ''
     timezone: str = 'Asia/Bishkek'
-    search_provider: str = 'duckduckgo'
+    search_provider: str = 'google'
+    screenshot_folder: str = ''
     telegram_enabled: bool = False
     discord_enabled: bool = False
     telegram_users: list[str] = field(default_factory=list)
@@ -38,7 +40,7 @@ class AgentSettings:
 
     def validate(self) -> None:
         from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-        if self.provider not in ('ollama', 'openai') or self.search_provider not in ('duckduckgo', 'bing', 'brave'):
+        if self.provider not in ('ollama', 'openai', 'gemini') or self.search_provider not in ('google', 'duckduckgo', 'bing', 'brave'):
             raise ValueError('Некорректный провайдер')
         url = urlsplit(self.ollama_url)
         if url.scheme != 'http' or url.hostname not in ('localhost', '127.0.0.1') or url.path not in ('', '/') or url.username or url.password or url.query or url.fragment:
@@ -50,12 +52,14 @@ class AgentSettings:
         for key in ('memory_enabled', 'onboarding_done', 'telegram_enabled', 'discord_enabled'):
             if type(getattr(self, key)) is not bool:
                 raise ValueError('Ожидался переключатель')
-        for key in ('model', 'cloud_model', 'name', 'language', 'tasks', 'timezone'):
+        for key in ('model', 'cloud_model', 'gemini_model', 'name', 'language', 'tasks', 'timezone', 'screenshot_folder'):
             value = getattr(self, key)
             if not isinstance(value, str) or len(value) > 2000:
                 raise ValueError('Некорректная строка настроек')
         if not self.model.strip() or not self.cloud_model.strip():
             raise ValueError('Укажите модель')
+        if not re.fullmatch(r'(?:models/)?[A-Za-z0-9][A-Za-z0-9._-]{0,127}', self.gemini_model):
+            raise ValueError('Укажите корректное имя модели Gemini.')
         try:
             ZoneInfo(self.timezone)
         except ZoneInfoNotFoundError:

@@ -107,6 +107,9 @@ class Registry:
             validate_value(arguments[key], spec)
         if not self.allowed(tool, context):
             raise PermissionError('Удалённый канал не имеет разрешения: ' + tool.permission)
+        if tool.permission in ('browser.open', 'browser.read'):
+            from .memory import require_public_payload
+            require_public_payload(arguments, context.secret_values)
         if tool.confirmation or (context.untrusted_data and not tool.safe_retry):
             context.progress('confirming', 'Ожидается подтверждение действия')
             preview = tool.description + '\n' + json.dumps(arguments, ensure_ascii=False, indent=2)
@@ -134,6 +137,10 @@ class Registry:
 
 
 def deterministic_call(text: str, approved_apps=()):
+    from eidos.desktop.intents import parse
+    desktop = parse(text)
+    if desktop and desktop[0] in ('volume', 'mute'):
+        return desktop
     normalized = ' '.join(re.sub(r'[^\w\s]', ' ', text.lower().replace('ё', 'е')).split())
     fixed = {
         'открой настройки': ('windows_settings', {'page': 'general'}),
@@ -159,7 +166,23 @@ def deterministic_call(text: str, approved_apps=()):
     if normalized in fixed:
         return fixed[normalized]
     match = re.fullmatch(r'(?:сделай|установи) громкость (\d{1,3})(?: процентов| процента| процент)?', normalized)
-    return ('volume', {'mode': 'set', 'value': int(match[1])}) if match else None
+    if match:
+        return 'volume', {'mode': 'set', 'value': int(match[1])}
+    # Vosk commonly spells numbers out. Only this complete command grammar
+    # accepts cardinals; arbitrary text never becomes executable input.
+    match = re.fullmatch(r'(?:сделай|установи) громкость ([а-я ]+?)(?: процентов| процента| процент)?', normalized)
+    if match:
+        units = {word: value for value, word in enumerate(('ноль', 'один', 'два', 'три', 'четыре',
+            'пять', 'шесть', 'семь', 'восемь', 'девять', 'десять', 'одиннадцать', 'двенадцать',
+            'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать'))}
+        tens = dict(zip(('двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто'), range(20, 100, 10)))
+        value = {**units, **tens, 'сто': 100}.get(match[1])
+        parts = match[1].split()
+        if len(parts) == 2 and parts[0] in tens and parts[1] in units and 1 <= units[parts[1]] <= 9:
+            value = tens[parts[0]] + units[parts[1]]
+        if value is not None:
+            return 'volume', {'mode': 'set', 'value': value}
+    return None
 
 
 SYSTEM = '''Ты Eidos, русскоязычный помощник. Используй только предоставленные инструменты.

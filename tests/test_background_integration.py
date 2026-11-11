@@ -48,7 +48,7 @@ def test_close_to_tray_keeps_workers_until_explicit_exit(app, tmp_path, monkeypa
         window.request_exit()
         wait_until(app, lambda: window._allow_close)
 
-def test_translation_adapter_delegates_and_requires_provider():
+def test_translation_adapter_delegates_and_supports_local_ocr():
     from PyQt6.QtCore import QRectF
     from eidos.modules.ocr.engine import TextLine
     from eidos.modules.ocr.interface import JonSnowTranslator
@@ -60,8 +60,8 @@ def test_translation_adapter_delegates_and_requires_provider():
         def translate(self, text, source, target, **kwargs):
             return 'Привет'
     adapter = JonSnowTranslator(ocr=OCR(), translator=Translate())
-    with pytest.raises(ValueError):
-        adapter.process(None, 'en', 'ru', '', threading.Event())
+    assert adapter.process(None, 'en', 'ru', '', threading.Event())[0].text == 'Hello'
+    assert adapter.process(None, 'en', 'ru', '', threading.Event())[0].translation == ''
     assert adapter.process(None, 'en', 'ru', 'google', threading.Event())[0].translation == 'Привет'
 
 def test_voice_cycle_runs_hidden_without_network(app, tmp_path, monkeypatch):
@@ -142,9 +142,15 @@ def test_cancel_capture_restores_previous_translation_layer(app):
     page.shutdown()
     page.close()
 
-def test_capture_error_after_previous_cancellation_restores_window(app):
+def test_capture_error_after_previous_cancellation_preserves_window_visibility(app, monkeypatch):
     from PyQt6.QtGui import QImage
     from eidos.ui.pages.translation import TranslationPage
+    from eidos.ui.screen_translation import TranslationWorker
+    class OCR:
+        def recognize(self, *args):
+            raise RuntimeError('Текст не найден')
+    monkeypatch.setattr('eidos.ui.pages.translation.TranslationWorker',
+                        lambda *args: TranslationWorker(*args, ocr=OCR()))
     page = TranslationPage()
     page.show()
     page._cancelled = True
@@ -153,8 +159,9 @@ def test_capture_error_after_previous_cancellation_restores_window(app):
     page.captured_image = QImage(50, 50, QImage.Format.Format_RGB32)
     page._clear_selectors()
     page._process_capture()
+    wait_until(app, lambda: page.worker is None)
     assert page.isVisible()
-    assert 'Провайдер' in page.feedback.text()
+    assert 'Текст не найден' in page.feedback.text()
     page.shutdown()
     page.close()
 

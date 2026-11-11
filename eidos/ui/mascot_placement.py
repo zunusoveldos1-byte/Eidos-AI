@@ -5,7 +5,8 @@ owned. Positions use Qt logical coordinates, including negative monitor origins.
 """
 from dataclasses import replace
 from PyQt6.QtCore import QEvent, QObject, QPoint, Qt, QTimer, pyqtSignal
-from PyQt6.QtWidgets import QApplication, QLabel, QMenu, QWidget
+from PyQt6.QtWidgets import QApplication
+from eidos.ui.localized import QLabel, QMenu, QWidget
 from .floating import clamp_position
 from .mascot import Mascot, STATE_DESCRIPTIONS
 from .voice_orb import MIC_TITLES
@@ -150,7 +151,7 @@ class DesktopMascot(QWidget):
         self._response_text = 'Ответ: ' + STATE_DESCRIPTIONS.get(state, state)
         self._response_message = message
         self._refresh_description()
-        self.setAccessibleDescription(self.status_label.text())
+        self.setAccessibleDescription(self.status_label.source_text())
 
     def set_microphone(self, state, error=''):
         self.microphone_label.setText(MIC_TITLES[state])
@@ -162,7 +163,7 @@ class DesktopMascot(QWidget):
     def _refresh_description(self):
         message = self._mic_error or self._response_message
         self.status_label.setText(self._response_text + ('\n' + message if message else ''))
-        self.mascot.setAccessibleDescription(self.microphone_label.text() + '\n' + self.status_label.text())
+        self.mascot.setAccessibleDescription(self.microphone_label.source_text() + '\n' + self.status_label.source_text())
 
     def set_microphone_paused(self, paused):
         pass  # Menu derives its current action from BackgroundControls.
@@ -246,7 +247,7 @@ class MascotPlacement(QObject):
         visible = not self.hidden and not self.capture_active and not self.window._closing
         self.desktop.setVisible(visible and self.mode == 'desktop')
         self.character.setVisible(visible)
-        self.stage.setVisible(self.mode == 'app' and not self.hidden and self.window.pages.currentIndex() != 0)
+        self.stage.setVisible(self.mode == 'app' and not self.hidden and self.window.pages.currentIndex() not in (0, 1, 2, 3, 4))
 
     def to_desktop(self):
         self.window._persist(replace(self.window.config, floating_enabled=True, mascot_hidden=False))

@@ -3,11 +3,13 @@ import math
 import time
 
 from PyQt6.QtCore import QEasingCurve, QParallelAnimationGroup, QPropertyAnimation, QRectF, QSize, Qt, QTimer, pyqtProperty, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap, QRadialGradient
-from PyQt6.QtWidgets import QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLineEdit, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget
+from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPen, QPixmap, QRadialGradient
+from PyQt6.QtWidgets import QGraphicsOpacityEffect, QHBoxLayout, QScrollArea, QSizePolicy, QVBoxLayout
+from eidos.ui.localized import QPushButton, QWidget
 from ..components import ResponsiveRow, button, label
 from ..icons import icon
 from ..theme import ASSETS
+from ..waves import WaveRenderer
 
 
 class RevealEffect(QGraphicsOpacityEffect):
@@ -144,55 +146,48 @@ class HomeCanvas(QWidget):
     def __init__(self):
         super().__init__()
         self.phase = 0.
+        self.waves = WaveRenderer()
+        self._background = QColor('#081D18')
+        self._glow = QRadialGradient()
+        self._glow.setColorAt(0, QColor(13, 59, 44, 125))
+        self._glow.setColorAt(1, QColor(8, 29, 24, 0))
+        self._particle_color = QColor(37, 230, 161, 0)
+        self._particle_pen = QPen(self._particle_color, 1)
+        self._particle_rect = QRectF()
         self.setObjectName('homeCanvas')
+
+    def resizeEvent(self, event):
+        self._glow.setCenter(self.width() * .78, self.height() * .48)
+        self._glow.setFocalPoint(self.width() * .78, self.height() * .48)
+        self._glow.setRadius(max(1., self.width() * .7))
+        super().resizeEvent(event)
 
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.fillRect(self.rect(), QColor('#081D18'))
-        glow = QRadialGradient(self.width() * .78, self.height() * .48, self.width() * .7)
-        glow.setColorAt(0, QColor(13, 59, 44, 125))
-        glow.setColorAt(1, QColor(8, 29, 24, 0))
-        painter.fillRect(self.rect(), glow)
-        for layer in range(3):
-            path = QPainterPath()
-            for i in range(81):
-                x = self.width() * i / 80
-                angle = i / 80 * 2 * math.pi + self.phase * 2 * math.pi / 16 + layer * .7
-                y = self.height() - 80 - layer * 17 + math.sin(angle) * (23 + layer * 10 + 3 * math.sin(self.phase * 4 * math.pi / 16))
-                if i == 0:
-                    path.moveTo(x, y)
-                else:
-                    path.lineTo(x, y)
-            painter.setPen(QPen(QColor(37, 230, 161, 40 - layer * 10), 1.2))
-            painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.drawPath(path)
-            path.lineTo(self.width(), self.height())
-            path.lineTo(0, self.height())
-            path.closeSubpath()
-            fill = QLinearGradient(0, self.height() - 170, 0, self.height())
-            fill.setColorAt(0, QColor(37, 230, 161, 12))
-            fill.setColorAt(1, QColor(37, 230, 161, 0))
-            painter.fillPath(path, fill)
+        painter.fillRect(self.rect(), self._background)
+        painter.fillRect(self.rect(), self._glow)
+        self.waves.draw(painter, self.width(), self.height(), self.phase)
         for index in range(7):
             progress = (self.phase / (11 + index) + index / 7) % 1
             alpha = int(45 * math.sin(progress * math.pi) ** 2)
             x = self.width() * (.12 + index * .127)
             y = self.height() * (1 - progress)
-            painter.setPen(QPen(QColor(37, 230, 161, alpha), 1))
+            self._particle_color.setAlpha(alpha)
+            self._particle_pen.setColor(self._particle_color)
+            painter.setPen(self._particle_pen)
             if index % 3 == 0:
                 painter.drawLine(int(x), int(y), int(x), int(y + 22))
             else:
-                painter.setBrush(QColor(37, 230, 161, alpha))
-                painter.drawEllipse(QRectF(x, y, 2, 2))
+                painter.setBrush(self._particle_color)
+                self._particle_rect.setRect(x, y, 2, 2)
+                painter.drawEllipse(self._particle_rect)
 
 
 class HomePage(QWidget):
     navigate_requested = pyqtSignal(int)
     compact_requested = pyqtSignal()
-    conversation_requested = pyqtSignal()
     capture_requested = pyqtSignal()
-    task_requested = pyqtSignal(str)
     app_requested = pyqtSignal()
 
     def __init__(self):
@@ -239,46 +234,17 @@ class HomePage(QWidget):
         self.status.setMaximumWidth(210)
         self.status.setFixedHeight(38)
         text.addWidget(self.status)
-        text.addSpacing(18)
-        composer = QFrame()
-        composer.setObjectName('homeComposer')
-        composer.setMinimumHeight(90)
-        row = QHBoxLayout(composer)
-        row.setContentsMargins(12, 12, 12, 12)
-        self.mic_button = button('', 'mic')
-        self.mic_button.setObjectName('homeMic')
-        self.mic_button.setFixedSize(52, 52)
-        self.mic_button.setToolTip('Начать голосовой ввод')
-        self.mic_button.setAccessibleName('Начать голосовой ввод')
-        self.mic_button.clicked.connect(self.conversation_requested)
-        row.addWidget(self.mic_button)
-        self.input = QLineEdit()
-        self.input.setObjectName('homeInput')
-        self.input.setPlaceholderText('Что сделать?')
-        self.input.setAccessibleName('Что сделать?')
-        self.input.setMaxLength(12000)
-        self.input.setMinimumWidth(0)
-        row.addWidget(self.input, 1)
-        self.send_button = button('', 'send', True)
-        self.send_button.setFixedSize(52, 52)
-        self.send_button.setToolTip('Отправить · Enter')
-        self.send_button.setAccessibleName('Отправить')
-        self.send_button.clicked.connect(self.submit)
-        self.input.returnPressed.connect(self.submit)
-        row.addWidget(self.send_button)
-        text.addWidget(composer)
+        self.voice_layout = text
         self.hero_mascot = HeroMascot()
-        self.hero = ResponsiveRow([left, self.hero_mascot], threshold=650, spacing=18)
+        self.hero = ResponsiveRow([left, self.hero_mascot], threshold=0, spacing=18)
         self.hero.row.setStretch(0, 7)
         self.hero.row.setStretch(1, 4)
         self.body.addWidget(self.hero)
-        self.voice_button = ActionCard('Поговорить', 'message', 'Включить существующий голосовой режим и обсудить задачу.')
         self.translate_button = ActionCard('Перевести экран', 'scan', 'Выделить область экрана и получить перевод.', '#79C7D2')
         self.app_button = ActionCard('Открыть приложение', 'grid', 'Выбрать Блокнот или одно из разрешённых приложений.', '#B6A2EC')
-        self.voice_button.clicked.connect(self.conversation_requested)
         self.translate_button.clicked.connect(self.capture_requested)
         self.app_button.clicked.connect(self.app_requested)
-        self.actions = ResponsiveRow([self.voice_button, self.translate_button, self.app_button], threshold=650, spacing=14)
+        self.actions = ResponsiveRow([self.translate_button, self.app_button], threshold=0, spacing=14)
         self.body.addWidget(self.actions)
         self.body.addStretch(3)
         self.body.addSpacing(90)
@@ -296,10 +262,12 @@ class HomePage(QWidget):
             animation.setEasingCurve(QEasingCurve.Type.OutCubic)
             self.reveal.addAnimation(animation)
 
-    def submit(self):
-        text = self.input.text().strip()
-        if text:
-            self.task_requested.emit(text)
+    def attach_voice(self, voice):
+        # Move the original stage, retaining its controller signal connections.
+        self.voice_stage = voice.stage
+        self.mic_button = voice.action_button
+        self.voice_layout.addWidget(self.voice_stage)
+        self.voice_stage.show()
 
     def set_camera_status(self, text):
         lower = text.lower()
@@ -328,7 +296,7 @@ class HomePage(QWidget):
 
     def sync_motion(self):
         enabled = self.animations_enabled and self.isVisible() and not self.window().isMinimized()
-        for card in (self.voice_button, self.translate_button, self.app_button):
+        for card in (self.translate_button, self.app_button):
             card.set_motion(enabled)
         if enabled:
             self._last_tick = time.monotonic()

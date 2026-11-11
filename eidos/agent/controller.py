@@ -88,13 +88,31 @@ class AgentWorker(QObject):
                 self.service.history.clear()
                 self.data.emit(kind, 'Память очищена.')
             elif kind == 'tool':
-                registry = build_registry(self.service.settings, self.service.memory)
+                registry = build_registry(self.service.settings, self.service.memory, self.service.desktop)
                 self.data.emit(kind, registry.execute(payload[0], payload[1], context).text)
             elif kind == 'hardware':
                 self.progress.emit('thinking', 'Диагностика оборудования…')
-                self.data.emit(kind, diagnose())
+                from eidos.core.metrics import METRICS
+                report = diagnose()
+                report['stage_metrics'] = METRICS.snapshot()
+                self.data.emit(kind, report)
             elif kind == 'start':
                 self.data.emit(kind, start_ollama(Path(__file__).parents[2]))
+            elif kind == 'model_status':
+                settings = self.service.settings
+                if settings.provider == 'ollama':
+                    tags = request_json('GET', settings.ollama_url.rstrip('/') + '/api/tags', context=context)
+                    running = request_json('GET', settings.ollama_url.rstrip('/') + '/api/ps', context=context)
+                    installed = any(row.get('name') == settings.model or row.get('model') == settings.model
+                                    for row in tags.get('models', []))
+                    loaded = any(row.get('name') == settings.model or row.get('model') == settings.model
+                                 for row in running.get('models', []))
+                    status = ('в памяти' if loaded else 'установлена, сейчас не в памяти' if installed else 'не установлена')
+                    self.data.emit(kind, 'Ollama доступен · ' + settings.model + ': ' + status)
+                elif settings.provider == 'gemini':
+                    self.data.emit(kind, provider_for(settings, self.service.secrets).check_connection(context))
+                else:
+                    self.data.emit(kind, 'OpenAI · ' + settings.cloud_model + ': для проверки выполните тест ответа. Запрос отправляется внешнему провайдеру.')
             elif kind == 'pull':
                 self.data.emit(kind, pull_model(self.service.settings, context))
             elif kind == 'model_test':
@@ -156,6 +174,7 @@ class AgentController(QObject):
         super().__init__(parent)
         self.service = service
         self.thread = QThread(self)
+        self.thread.setObjectName('EidosAgent')
         self.worker = AgentWorker(service)
         self.worker.moveToThread(self.thread)
         self.requested.connect(self.worker.perform)

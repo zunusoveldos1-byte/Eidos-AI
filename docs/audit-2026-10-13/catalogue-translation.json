@@ -1,0 +1,14 @@
+{
+  "source": "eidos/assets/i18n/ru.json",
+  "sha256": "6bf80ba0d2b89afaf16ba819b8233355e93a626f33ce38903e75d241e03389a4",
+  "provider": "Google Translate web UI, explicitly approved in chat; API returned HTTP 429",
+  "keys": 1266,
+  "missing": {
+    "en": [],
+    "ky": [],
+    "uz": [],
+    "kk": []
+  },
+  "placeholder_repairs": 3,
+  "additional_reviewed_strings": 4
+}

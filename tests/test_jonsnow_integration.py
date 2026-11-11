@@ -111,8 +111,8 @@ def test_close_waits_for_translation_and_agent_and_releases_hotkeys(app, tmp_pat
     window.agent_service.respond = respond
     try:
         wait_until(app, lambda: not window.controller.discovering)
-        window.navigate(5)
-        assert window.pages.currentWidget() is window.assistant
+        window.navigate(6)
+        assert window.pages.currentWidget() is window.tools
         assert window._start_agent_task('chat', 'test')
         wait_until(app, agent_started.is_set)
         page = window.translation

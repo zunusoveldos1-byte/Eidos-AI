@@ -24,6 +24,8 @@ def endpoint():
             if state['block']:
                 release.wait(5)
             payload = b''.join(json.dumps(line).encode() + b'\n' for line in state['lines'])
+            if state.get('no_final_newline'):
+                payload = payload.rstrip(b'\n')
             try:
                 self.send_response(200)
                 self.send_header('Content-Length', str(len(payload)))
@@ -90,3 +92,21 @@ def test_truncated_response_is_not_reported_as_success(endpoint):
     state['lines'] = [{'message': {'content': 'Незаконченный ответ'}, 'done': False}]
     with pytest.raises(RuntimeError, match='до завершения'):
         provider.chat([{'role': 'user', 'content': 'Ответ'}], [], TaskContext())
+
+
+@pytest.mark.parametrize('newline', [True, False])
+def test_first_text_token_is_logged_once_and_survives_done_chunk(endpoint, caplog, newline):
+    import logging
+    provider, state, _ = endpoint
+    state['no_final_newline'] = not newline
+    state['lines'] = [
+        {'message': {'content': '', 'thinking': 'internal'}, 'done': False},
+        {'message': {'content': 'Hello'}, 'done': True, 'eval_count': 1},
+    ]
+    with caplog.at_level(logging.INFO, logger='eidos.voice.latency'):
+        provider.chat([], [], TaskContext())
+    assert provider.metrics['first_token_ms'] >= 0
+    assert provider.metrics['eval_count'] == 1
+    records = [r for r in caplog.records if r.name == 'eidos.voice.latency']
+    assert len(records) == 1 and 'LLM:' in records[0].message
+    assert 'Hello' not in records[0].message

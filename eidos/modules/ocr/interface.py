@@ -36,8 +36,8 @@ class JonSnowTranslator:
             translator = OnlineTranslator()
         self.ocr, self.translator = ocr, translator
 
-    def process(self, image, source, target, provider, cancel, progress=None, recognized=None):
-        if provider != 'google':
+    def process(self, image, source, target, provider, cancel, progress=None, recognized=None, secret_values=()):
+        if provider not in ('', 'google'):
             raise ValueError('Выберите провайдер перевода. Google получает только распознанный текст.')
         if cancel.is_set():
             return []
@@ -50,6 +50,12 @@ class JonSnowTranslator:
             raise RuntimeError('Текст не найден. Выделите более крупные надписи.')
         if recognized:
             recognized('\n'.join(line.text for line in lines))
+        if not provider:
+            return lines
+        # Check all OCR at once: a credential can be split across lines, and
+        # even the first innocent line must not leave before this check.
+        from eidos.agent.memory import require_public_text
+        require_public_text('\n'.join(line.text for line in lines), secret_values)
         cache = {}
         for index, line in enumerate(lines, 1):
             if cancel.is_set():
@@ -59,6 +65,7 @@ class JonSnowTranslator:
             if line.text not in cache:
                 from .engine import OnlineTranslator
                 if isinstance(self.translator, OnlineTranslator):
+                    self.translator.secret_values = secret_values
                     cache[line.text] = self.translator.translate(line.text, source, target, cancel=cancel)
                 else:
                     cache[line.text] = self.translator.translate(line.text, source, target)

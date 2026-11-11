@@ -6,7 +6,8 @@ from functools import lru_cache
 import math
 from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, QRectF, QSize, Qt, QTimer, pyqtProperty
 from PyQt6.QtGui import QPainter, QPixmap, QColor, QPen
-from PyQt6.QtWidgets import QSizePolicy, QWidget
+from PyQt6.QtWidgets import QSizePolicy
+from eidos.ui.localized import QWidget
 from .theme import ASSETS
 
 STATE_DESCRIPTIONS = {

@@ -1,5 +1,5 @@
 """SQLite data, FTS5 retrieval and durable delivery reservations; no training."""
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import json
 from pathlib import Path
 import re
@@ -13,6 +13,25 @@ def has_secret(text: str, values: tuple[str, ...] = ()) -> bool:
     return bool(SECRET.search(text)) or any(value in text for value in values if value)
 
 
+def require_public_text(text: str, values: tuple[str, ...] = ()) -> None:
+    """Fail closed before external text transport; never include input in errors."""
+    if has_secret(text, values):
+        raise ValueError('Обнаружен возможный секрет. Внешняя отправка отменена.')
+
+
+def require_public_payload(payload, values: tuple[str, ...] = ()) -> None:
+    """Check raw strings before JSON escaping changes exact credential matches."""
+    if isinstance(payload, str):
+        require_public_text(payload, values)
+    elif isinstance(payload, dict):
+        for key, value in payload.items():
+            require_public_text(str(key), values)
+            require_public_payload(value, values)
+    elif isinstance(payload, (list, tuple)):
+        for value in payload:
+            require_public_payload(value, values)
+
+
 def redact_secrets(text: str, values: tuple[str, ...] = ()) -> str:
     for value in sorted(values, key=len, reverse=True):
         if value:
@@ -21,11 +40,17 @@ def redact_secrets(text: str, values: tuple[str, ...] = ()) -> str:
 
 
 class Memory:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, *, max_rows=10000, retention_days=365):
         self.path = path
+        self.max_rows = max(1, int(max_rows))
+        self.retention_days = max(1, int(retention_days))
         self.secret_values: tuple[str, ...] = ()
         path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as db:
+            # Never overwrite or recreate a corrupt database silently.
+            if db.execute('PRAGMA quick_check').fetchone()[0] != 'ok':
+                raise sqlite3.DatabaseError('Локальная база повреждена. Сохраните копию перед восстановлением.')
+            db.execute('PRAGMA journal_mode=WAL')
             db.executescript('''
                 CREATE TABLE IF NOT EXISTS memories (
                     id INTEGER PRIMARY KEY, kind TEXT NOT NULL, content TEXT NOT NULL,
@@ -45,6 +70,16 @@ class Memory:
                     timezone TEXT NOT NULL, reminder_minutes INTEGER NOT NULL DEFAULT 10,
                     notified INTEGER NOT NULL DEFAULT 0);
             ''')
+            columns = {row[1] for row in db.execute('PRAGMA table_info(memories)')}
+            if 'evidence' not in columns:
+                db.execute("ALTER TABLE memories ADD COLUMN evidence TEXT NOT NULL DEFAULT 'unconfirmed'")
+                # Existing rows must be indexed before UPDATE triggers issue
+                # FTS delete records (also supports pre-FTS legacy databases).
+                db.execute("INSERT INTO memory_fts(memory_fts) VALUES('rebuild')")
+                db.execute("UPDATE memories SET evidence=CASE WHEN kind='summary' THEN 'inference' "
+                           "WHEN kind='dialogue' THEN 'transcript' WHEN kind='preference' THEN 'preference' "
+                           "ELSE 'unconfirmed' END")
+            db.execute('PRAGMA user_version=1')
 
     def connect(self):
         db = sqlite3.connect(self.path, timeout=5)
@@ -52,15 +87,33 @@ class Memory:
         db.execute('PRAGMA secure_delete=ON')
         return db
 
-    def add(self, kind: str, content: str, source: str) -> int | None:
+    def add(self, kind: str, content: str, source: str, *, evidence=None) -> int | None:
         if kind not in KINDS or not content.strip() or len(content) > 16000:
             raise ValueError('Некорректная запись памяти')
         if has_secret(content, self.secret_values) or has_secret(source, self.secret_values):
             return None
+        if len(source) > 1000:
+            raise ValueError('Слишком длинный источник записи памяти')
+        evidence = evidence or {'summary': 'inference', 'dialogue': 'transcript',
+                               'preference': 'preference'}.get(kind, 'unconfirmed')
+        if evidence not in ('confirmed', 'preference', 'inference', 'transcript', 'unconfirmed'):
+            raise ValueError('Некорректный тип подтверждения памяти')
         now = datetime.now(timezone.utc).isoformat()
         with self.connect() as db:
-            return db.execute('INSERT INTO memories(kind,content,source,created,updated) VALUES(?,?,?,?,?)',
-                              (kind, content, source, now, now)).lastrowid
+            ident = db.execute('INSERT INTO memories(kind,content,source,created,updated,evidence) VALUES(?,?,?,?,?,?)',
+                              (kind, content, source, now, now, evidence)).lastrowid
+            self._prune(db)
+            return ident
+
+    def _prune(self, db):
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=self.retention_days)).isoformat()
+        db.execute('DELETE FROM memories WHERE updated < ?', (cutoff,))
+        db.execute('DELETE FROM memories WHERE id NOT IN (SELECT id FROM memories ORDER BY id DESC LIMIT ?)',
+                   (self.max_rows,))
+
+    def prune(self):
+        with self.connect() as db:
+            self._prune(db)
 
     def items(self, kind: str | None = None, limit: int = 200):
         with self.connect() as db:

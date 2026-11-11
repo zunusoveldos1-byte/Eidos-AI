@@ -283,13 +283,9 @@ class LocalAudioInput(QThread):
         queue = Queue(maxsize=8)
         damaged = Event()
         device, info = self._device(sd)
-        native_rate = int(info['default_samplerate'])
-        try:
-            sd.check_input_settings(device=device, channels=1, dtype='float32', samplerate=RATE)
-            native_rate = RATE
-        except Exception:
-            pass
-        resampler = LinearResampler(native_rate) if native_rate != RATE else None
+        native_rate = RATE
+        sd.check_input_settings(device=device, channels=1, dtype='int16', samplerate=RATE)
+        resampler = None
         pending = np.empty(0, np.float32)
         gate.reset()
         gate.held = self.ptt.is_set()  # reconnect must not turn an old held key into a new press
@@ -306,11 +302,11 @@ class LocalAudioInput(QThread):
             if not allowed or self.stop_event.is_set():
                 return
             try:
-                queue.put_nowait((indata[:, 0].copy(), epoch, self.ptt.is_set()))
+                queue.put_nowait((bytes(indata), epoch, self.ptt.is_set()))
             except Full:
                 damaged.set()  # a discontinuous command is discarded, never executed
 
-        stream = sd.InputStream(device=device, channels=1, dtype='float32',
+        stream = sd.RawInputStream(device=device, channels=1, dtype='int16',
                                 samplerate=native_rate, blocksize=round(native_rate * .032),
                                 callback=callback)
         try:
@@ -345,8 +341,7 @@ class LocalAudioInput(QThread):
                 last_frame = time.monotonic()
                 if not allowed or audio_epoch != generation:
                     continue
-                if resampler:
-                    audio = resampler.feed(audio)
+                audio = np.frombuffer(audio, dtype='<i2').astype(np.float32) / 32768.
                 pending = np.concatenate((pending, audio))
                 while len(pending) >= FRAME:
                     block, pending = pending[:FRAME], pending[FRAME:]

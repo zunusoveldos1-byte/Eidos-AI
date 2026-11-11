@@ -83,10 +83,17 @@ class WindowsOCR:
 
 class OnlineTranslator:
     """Google's public translation endpoint; no API key, timeout on every request."""
+    def __init__(self, secret_values=()):
+        self.secret_values = secret_values
+
     def translate(self, text: str, source: str, target: str, cancel=None, progress=None) -> str:
         source = {'zh-Hans': 'zh-CN'}.get(source, source)
         if source == target:
             return text
+        from eidos.agent.memory import require_public_text
+        require_public_text(text, self.secret_values)
+        if len(text) > 12000:
+            raise ValueError('Текст перевода превышает 12000 символов.')
         # OCR lines are short; bound oversized lines instead of sending truncated text.
         chunks = [text[i:i + 1500] for i in range(0, len(text), 1500)]
         output = []

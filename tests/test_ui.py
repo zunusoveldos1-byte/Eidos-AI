@@ -56,8 +56,8 @@ def test_controller_prevents_repeat_and_closes_recording(app, tmp_path):
 def test_window_smoke_and_config_save(app, tmp_path):
     window = MainWindow(ConfigStore(tmp_path / 'config.json'))
     window.show()
-    assert window.pages.count() == 8
-    assert [button.accessibleName() for button in window.sidebar.buttons] == ['Главная', 'Диалог', 'Голос', 'Экран и перевод', 'Камера и жесты', 'Инструменты', 'Память', 'Настройки']
+    assert window.pages.count() == 7
+    assert [button.accessibleName() for button in window.sidebar.buttons] == ['Главная', 'Экран и перевод', 'Камера и жесты', 'Инструменты', 'Настройки']
     window.voice.speak.setChecked(False)
     assert ConfigStore(tmp_path / 'config.json').load().speak is False
     window.close()
@@ -84,7 +84,9 @@ def test_playback_error_after_worker_finishes_allows_retry(app, tmp_path):
 def test_shutdown_waits_for_inflight_engine_and_removes_audio(app, tmp_path, stage):
     import numpy as np
     gate, entered = threading.Event(), threading.Event()
-    output = tmp_path / 'late.mp3'
+    from eidos.modules.voice.pcm import PCMAudio
+    output = PCMAudio(bytes(1024))
+    delivered = []
 
     class Recorder:
         def record(self, device, stop, cancel, started):
@@ -104,10 +106,10 @@ def test_shutdown_waits_for_inflight_engine_and_removes_audio(app, tmp_path, sta
         def synthesize(self, *_):
             entered.set()
             gate.wait(2)
-            output.write_bytes(b'late')
             return output
 
     controller = VoiceController(tmp_path, worker=VoiceWorker(recorder=Recorder(), stt=STT(), tts=TTS()))
+    controller.worker.audio.connect(delivered.append)
     closed = []
     controller.closed.connect(lambda: closed.append(True))
     try:
@@ -121,10 +123,10 @@ def test_shutdown_waits_for_inflight_engine_and_removes_audio(app, tmp_path, sta
         gate.set()
         controller.shutdown()
         wait_until(app, lambda: bool(closed))
-    assert not output.exists()
+    assert not delivered and not controller.playback.active
 
 
-def test_tts_cancellation_removes_temporary_file(monkeypatch, tmp_path):
+def test_tts_cancellation_discards_memory_without_file_creation(monkeypatch, tmp_path):
     import asyncio
     from eidos.modules.voice.tts import EdgeTTS
 
@@ -132,11 +134,10 @@ def test_tts_cancellation_removes_temporary_file(monkeypatch, tmp_path):
     cancel = threading.Event()
     monkeypatch.setattr('tempfile.tempdir', str(tmp_path))
 
-    async def cancelled(text, voice, path, event):
-        path.write_bytes(b'partial')
+    async def cancelled(text, voice, event, rate, volume):
         event.set()
-        return False
+        return b'partial'
 
-    monkeypatch.setattr(engine, '_save', cancelled)
+    monkeypatch.setattr(engine, '_collect', cancelled)
     assert engine.synthesize('Привет', 'test', cancel) is None
     assert list(tmp_path.iterdir()) == []

@@ -50,11 +50,11 @@ def main():
                 assert not window.windowFlags() & Qt.WindowType.FramelessWindowHint
                 assert page.scroll.horizontalScrollBar().maximum() == 0
                 assert page.content.width() <= page.scroll.viewport().width()
-                assert page.input.width() >= 160
+                assert page.isAncestorOf(window.voice.action_button)
                 assert page.hero_mascot.pixmap.hasAlphaChannel()
                 assert page.hero_mascot.pixmap.toImage().pixelColor(0, 0).alpha() == 0
                 metrics.append({'case': slug, 'dpr': window.devicePixelRatioF(),
-                                'input_width': page.input.width(), 'content_width': page.content.width(),
+                                'microphone_width': page.mic_button.width(), 'content_width': page.content.width(),
                                 'viewport_width': page.scroll.viewport().width(),
                                 'vertical_scroll': page.scroll.verticalScrollBar().maximum()})
         # Persisted state must be restored by a new window, not just a widget toggle.
@@ -82,7 +82,7 @@ def main():
         before = window.home._elapsed
         QTest.qWait(200)
         assert window.home._elapsed > before
-        window.navigate(5)
+        window.navigate(6)
         before = window.home._elapsed
         QTest.qWait(200)
         assert window.home._elapsed == before

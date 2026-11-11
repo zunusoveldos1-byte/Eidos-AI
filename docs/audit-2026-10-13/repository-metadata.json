@@ -1,0 +1,42 @@
+{
+  "checked_text_files": 286,
+  "high_confidence_pattern_locations": [],
+  "limitation": "Two high-confidence token formats only; no git-history or native-credential scan. Matching strings are never printed.",
+  "tracked_files": 479,
+  "tracked_bytes": 33569617,
+  "tracked_media_files": 155,
+  "largest_tracked_files": [
+    {
+      "file": "eidos/assets/mascot-emotions-clean.png",
+      "bytes": 1943035
+    },
+    {
+      "file": "docs/gestures/recording/camera-preview.mp4",
+      "bytes": 1780996
+    },
+    {
+      "file": "docs/screenshots/workspace/mascot-transfer.gif",
+      "bytes": 1775234
+    },
+    {
+      "file": "JARVIS-main/assets/images/banner.png",
+      "bytes": 1717583
+    },
+    {
+      "file": "eidos/assets/mascot-emotions.png",
+      "bytes": 1346141
+    },
+    {
+      "file": "eidos/assets/eidos-home.png",
+      "bytes": 908976
+    },
+    {
+      "file": "eidos/assets/fonts/Inter.ttf",
+      "bytes": 876576
+    },
+    {
+      "file": "eidos/assets/mascot-atlas.png",
+      "bytes": 858227
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+from eidos.modules.voice.pcm import PCMAudio
 import sys
 import time
 from pathlib import Path
@@ -58,8 +59,6 @@ class Player(QObject):
         self.volume = volume
 
     def stop(self):
-        if self.path:
-            self.path.unlink(missing_ok=True)
         self.path = None
 
     def complete(self):
@@ -74,9 +73,7 @@ def test_queue_serial_playback_cancel_and_shutdown(app, monkeypatch, tmp_path):
     class Provider:
         def synthesize(self, text, voice, cancel, *, rate=0, volume=100):
             calls.append((text, rate, volume))
-            path = tmp_path / f'{len(calls)}.mp3'
-            path.write_bytes(b'audio')
-            return path
+            return PCMAudio(bytes(1024))
 
     monkeypatch.setattr(speech, 'EdgeTTS', Provider)
     player = Player()
@@ -85,9 +82,11 @@ def test_queue_serial_playback_cancel_and_shutdown(app, monkeypatch, tmp_path):
         assert queue.enqueue('Первое. Второе.', config())
         assert queue.active
         wait(app, lambda: len(player.paths) == 1)
-        assert calls == [('Первое.', 10, 100)]
+        assert calls == [('Первое. Второе.', 10, 100)]
         assert player.volume == 40
         player.complete()
+        assert len(player.paths) == 1 and not queue.active
+        assert queue.enqueue('Третье.', config())
         wait(app, lambda: len(player.paths) == 2)
         queue.stop()
         assert not queue.active
@@ -102,13 +101,12 @@ def test_queue_serial_playback_cancel_and_shutdown(app, monkeypatch, tmp_path):
 def test_shutdown_discards_late_synthesis(app, monkeypatch, tmp_path):
     from eidos.modules.voice import speech
     entered, release = Event(), Event()
-    path = tmp_path / 'late.mp3'
+    path = PCMAudio(bytes(1024))
 
     class Provider:
         def synthesize(self, text, voice, cancel, **kwargs):
             entered.set()
             release.wait(2)
-            path.write_bytes(b'audio')
             return path
 
     monkeypatch.setattr(speech, 'EdgeTTS', Provider)
@@ -118,7 +116,7 @@ def test_shutdown_discards_late_synthesis(app, monkeypatch, tmp_path):
     wait(app, entered.is_set)
     queue.shutdown()
     release.set()
-    wait(app, lambda: not queue.is_running and not path.exists())
+    wait(app, lambda: not queue.is_running and queue._inflight is None)
     assert player.paths == []
 
 
@@ -194,19 +192,17 @@ def test_edge_settings_and_old_call_remain_supported(monkeypatch, tmp_path):
         def __init__(self, text, voice, **kwargs):
             calls.append((text, voice, kwargs))
 
-        async def save(self, filename):
-            Path(filename).write_bytes(b'audio')
+        async def stream(self):
+            yield {'type': 'audio', 'data': b'audio'}
 
     monkeypatch.setitem(sys.modules, 'edge_tts', SimpleNamespace(Communicate=Communicate))
     provider = EdgeTTS()
+    monkeypatch.setattr(provider, '_decode', lambda data: PCMAudio(bytes(1024)))
     paths = [provider.synthesize('Текст', 'voice', Event(), rate=-25, volume=80),
              provider.synthesize('Текст', 'voice', Event())]
-    try:
-        assert calls[0] == ('Текст', 'voice', {'rate': '-25%', 'volume': '-20%'})
-        assert paths[0].exists() and paths[1].exists()
-    finally:
-        for path in paths:
-            path.unlink(missing_ok=True)
+    assert calls[0] == ('Текст', 'voice', {'rate': '-25%', 'volume': '-20%'})
+    assert all(isinstance(audio, PCMAudio) for audio in paths)
+    assert not list(tmp_path.iterdir())
 
 
 def test_wake_busy_releases_stream_and_pause_prevents_restart(app, monkeypatch, tmp_path):
@@ -317,8 +313,8 @@ def test_recorder_end_of_speech_and_bounded_levels(monkeypatch):
             self.callback = kwargs['callback']
 
         def start(self):
-            for value in [0.] * 3 + [.1] * 4 + [0.] * 15:
-                self.callback(np.full((1600, 1), value, dtype=np.float32), 1600, None, False)
+            for value in [0.] * 3 + [.1] * 4 + [0.] * 24:
+                self.callback(np.full(512, int(value * 32768), dtype='<i2').tobytes(), 512, None, False)
 
         def abort(self):
             closed.append('abort')
@@ -327,9 +323,13 @@ def test_recorder_end_of_speech_and_bounded_levels(monkeypatch):
             closed.append('close')
 
     monkeypatch.setitem(sys.modules, 'sounddevice', SimpleNamespace(
-        InputStream=Stream, query_devices=lambda *_: {'default_samplerate': 16000},
+        RawInputStream=Stream, query_devices=lambda *_: {'default_samplerate': 16000},
         check_input_settings=lambda **_: None))
     recorder = Recorder()
+    class VAD:
+        def reset(self): pass
+        def __call__(self, data): return float(np.max(np.frombuffer(data, dtype='<i2')) > 1000)
+    recorder.vad = VAD()
     recorder.end_of_speech = True
     recorder.level_callback = levels.append
     safety = Timer(.3, stop.set)
@@ -353,8 +353,8 @@ def test_recorder_onset_timeout_returns_empty_without_retaining_room_audio(monke
             self.callback = kwargs['callback']
 
         def start(self):
-            for _ in range(80):
-                self.callback(np.zeros((1600, 1), dtype=np.float32), 1600, None, False)
+            for _ in range(30):
+                self.callback(bytes(8192), 4096, None, False)
 
         def abort(self):
             pass
@@ -363,9 +363,13 @@ def test_recorder_onset_timeout_returns_empty_without_retaining_room_audio(monke
             pass
 
     monkeypatch.setitem(sys.modules, 'sounddevice', SimpleNamespace(
-        InputStream=Stream, query_devices=lambda *_: {'default_samplerate': 16000},
+        RawInputStream=Stream, query_devices=lambda *_: {'default_samplerate': 16000},
         check_input_settings=lambda **_: None))
     recorder = Recorder()
+    class VAD:
+        def reset(self): pass
+        def __call__(self, data): return float(np.max(np.frombuffer(data, dtype='<i2')) > 1000)
+    recorder.vad = VAD()
     recorder.end_of_speech = True
     safety = Timer(.3, stop.set)
     safety.start()
@@ -374,7 +378,7 @@ def test_recorder_onset_timeout_returns_empty_without_retaining_room_audio(monke
     assert audio.size == 0
 
 
-def test_sapi_cancellation_purges_speech_closes_file_and_com(monkeypatch, tmp_path):
+def test_sapi_cancellation_purges_speech_releases_memory_and_com(monkeypatch, tmp_path):
     from eidos.modules.voice import tts
     cancel = Event()
     events = []
@@ -406,21 +410,15 @@ def test_sapi_cancellation_purges_speech_closes_file_and_com(monkeypatch, tmp_pa
             return False
 
     class Stream:
-        def Open(self, filename, mode, flag):
-            Path(filename).write_bytes(b'wav')
-            events.append('open')
-
-        def Close(self):
-            events.append('close')
+        Format = SimpleNamespace(Type=None)
+        def GetData(self): return bytes(1024)
 
     speaker = Speaker()
     monkeypatch.setitem(sys.modules, 'comtypes', SimpleNamespace(
         CoInitialize=lambda: events.append('init'), CoUninitialize=lambda: events.append('uninit')))
     monkeypatch.setitem(sys.modules, 'comtypes.client', SimpleNamespace(
         CreateObject=lambda name, **_: speaker if name == 'SAPI.SpVoice' else Stream()))
-    original_mkstemp = tts.tempfile.mkstemp
-    monkeypatch.setattr(tts.tempfile, 'mkstemp', lambda **kwargs: original_mkstemp(dir=tmp_path, **kwargs))
     assert tts.SapiTTS().synthesize('Ответ', '', cancel, rate=50, volume=80) is None
-    assert events == ['init', 'open', ('speak', 'Ответ', 1), ('speak', '', 3), 'close', 'uninit']
+    assert events == ['init', ('speak', 'Ответ', 1), ('speak', '', 3), 'uninit']
     assert speaker.Rate == 5 and speaker.Volume == 80
     assert not list(tmp_path.iterdir())

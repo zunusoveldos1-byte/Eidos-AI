@@ -1,0 +1,7 @@
+{
+  "source": "https://api.osv.dev/v1/querybatch",
+  "checked_packages": 36,
+  "scope": "Fixed allowlist of public libraries only; other distribution names were not sent.",
+  "findings": [],
+  "limitation": "PyPI names/versions only; native bundled libraries, binaries and model files are outside this check."
+}

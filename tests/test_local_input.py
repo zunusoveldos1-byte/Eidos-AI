@@ -116,7 +116,7 @@ def test_audio_overflow_closes_device_without_submitting_partial_command():
         def start(self):
             # Overflow at the producer, without opening a real microphone.
             for _ in range(9):
-                self.callback(frame(1)[:, None], 512, None, False)
+                self.callback(np.full(512, 32767, dtype='<i2').tobytes(), 512, None, False)
 
         def abort(self):
             closed.append('abort')
@@ -125,7 +125,7 @@ def test_audio_overflow_closes_device_without_submitting_partial_command():
             closed.append('close')
 
     sd = SimpleNamespace(query_devices=lambda **kw: {'default_samplerate': 16000},
-                         check_input_settings=lambda **kw: None, InputStream=Stream)
+                         check_input_settings=lambda **kw: None, RawInputStream=Stream)
     vad = SimpleNamespace(reset=lambda: None)
     audio_input = LocalAudioInput()
     audio_input.audio_ready.connect(lambda *args: received.append(args))

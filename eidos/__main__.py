@@ -20,7 +20,7 @@ def main() -> int:
         os.execv(str(runtime), [str(runtime), '-m', 'eidos', *sys.argv[1:]])
     parser = argparse.ArgumentParser(description='Eidos — голосовой настольный ассистент')
     parser.add_argument('--smoke-test', action='store_true', help='Открыть окно и безопасно закрыть через 1 секунду, без записи')
-    parser.add_argument('--page', choices=['home', 'voice', 'gestures', 'translation', 'settings', 'assistant', 'tools', 'memory', 'dialogue'], default='home')
+    parser.add_argument('--page', choices=['home', 'voice', 'gestures', 'translation', 'settings', 'tools'], default='home')
     args = parser.parse_args()
     try:
         from PyQt6.QtCore import QTimer
@@ -30,13 +30,20 @@ def main() -> int:
     except ImportError as exc:
         print(f'Не установлены зависимости интерфейса: {exc}. Выполните python -m pip install -r requirements.txt.', file=sys.stderr)
         return 1
-    configure_logging()
     app = QApplication(sys.argv[:1])
     app.setApplicationName('Eidos')
     app.setOrganizationName('Eidos')
+    from eidos.core.config import data_dir
+    from eidos.core.instance import SingleInstance
+    instance = SingleInstance(data_dir(), app)
+    if not instance.acquire():
+        return 0
+    app.aboutToQuit.connect(instance.close)
+    configure_logging()
     window = MainWindow()
+    instance.activated.connect(window.background.open_window)
     window.navigate({'home': 0, 'voice': 1, 'gestures': 2, 'translation': 3,
-                     'settings': 4, 'assistant': 5, 'dialogue': 5, 'tools': 6, 'memory': 7}[args.page])
+                     'settings': 4, 'tools': 6}[args.page])
     window.show_startup()
     if args.smoke_test:
         QTimer.singleShot(1000, window.request_exit)

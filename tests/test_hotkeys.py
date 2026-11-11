@@ -109,7 +109,7 @@ def test_settings_save_applies_hotkeys_and_dispatches_actions(app, tmp_path, mon
         calls = []
         monkeypatch.setattr(window.translation, 'start_capture', lambda: calls.append('capture'))
         window.hotkeys.activated.emit('capture')
-        assert window.pages.currentIndex() == 3
+        assert window.pages.currentIndex() == 0
         assert calls == ['capture']
         window.translation.captured_image = QImage(10, 10, QImage.Format.Format_RGB32)
         monkeypatch.setattr(window.translation, 'retry_translation', lambda: calls.append('repeat'))

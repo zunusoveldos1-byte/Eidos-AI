@@ -1,0 +1,304 @@
+{
+  "date": "2026-10-13",
+  "scope": "Working tree, including uncommitted changes",
+  "inventory": {
+    "eidos": {
+      "files": 79,
+      "lines": 11976,
+      "largest": [
+        {
+          "file": "eidos/ui/main_window.py",
+          "lines": 836
+        },
+        {
+          "file": "eidos/ui/pages/gestures.py",
+          "lines": 669
+        },
+        {
+          "file": "eidos/ui/assistant_bindings.py",
+          "lines": 554
+        },
+        {
+          "file": "eidos/ui/pages/translation.py",
+          "lines": 472
+        },
+        {
+          "file": "eidos/modules/voice/local_input.py",
+          "lines": 412
+        },
+        {
+          "file": "eidos/agent/tools.py",
+          "lines": 397
+        },
+        {
+          "file": "eidos/modules/vision/service.py",
+          "lines": 391
+        },
+        {
+          "file": "eidos/ui/background.py",
+          "lines": 387
+        }
+      ],
+      "syntax_errors": []
+    },
+    "tests": {
+      "files": 34,
+      "lines": 4515,
+      "largest": [
+        {
+          "file": "tests/test_voice_upgrade.py",
+          "lines": 447
+        },
+        {
+          "file": "tests/test_background_voice.py",
+          "lines": 426
+        },
+        {
+          "file": "tests/test_translation.py",
+          "lines": 282
+        },
+        {
+          "file": "tests/test_agent_tools.py",
+          "lines": 193
+        },
+        {
+          "file": "tests/test_home_refresh.py",
+          "lines": 188
+        },
+        {
+          "file": "tests/test_voice_indicator.py",
+          "lines": 188
+        },
+        {
+          "file": "tests/test_gesture_runtime.py",
+          "lines": 185
+        },
+        {
+          "file": "tests/test_background_integration.py",
+          "lines": 171
+        }
+      ],
+      "syntax_errors": []
+    },
+    "scripts": {
+      "files": 29,
+      "lines": 2251,
+      "largest": [
+        {
+          "file": "scripts/local_voice_demo.py",
+          "lines": 189
+        },
+        {
+          "file": "scripts/verify_gestures_native.py",
+          "lines": 187
+        },
+        {
+          "file": "scripts/check_hotkeys_native.py",
+          "lines": 138
+        },
+        {
+          "file": "scripts/capture_workspace.py",
+          "lines": 110
+        },
+        {
+          "file": "scripts/verify_home_refresh.py",
+          "lines": 108
+        },
+        {
+          "file": "scripts/verify_voice_native.py",
+          "lines": 94
+        },
+        {
+          "file": "scripts/capture_voice_indicator.py",
+          "lines": 90
+        },
+        {
+          "file": "scripts/benchmark_agent.py",
+          "lines": 87
+        }
+      ],
+      "syntax_errors": []
+    },
+    "JARVIS-main": {
+      "files": 64,
+      "lines": 43929,
+      "largest": [
+        {
+          "file": "JARVIS-main/ui.py",
+          "lines": 9934
+        },
+        {
+          "file": "JARVIS-main/plugins/game_updater.py",
+          "lines": 2903
+        },
+        {
+          "file": "JARVIS-main/main.py",
+          "lines": 2540
+        },
+        {
+          "file": "JARVIS-main/plugins/telegram_remote.py",
+          "lines": 2458
+        },
+        {
+          "file": "JARVIS-main/plugins/_live_panels_core.py",
+          "lines": 2155
+        },
+        {
+          "file": "JARVIS-main/actions/computer_settings.py",
+          "lines": 1235
+        },
+        {
+          "file": "JARVIS-main/actions/browser_control.py",
+          "lines": 1233
+        },
+        {
+          "file": "JARVIS-main/actions/file_processor.py",
+          "lines": 1063
+        }
+      ],
+      "syntax_errors": [
+        {
+          "file": "JARVIS-main/main.py",
+          "line": 1891,
+          "message": "multiple exception types must be parenthesized"
+        },
+        {
+          "file": "JARVIS-main/memory/config_manager.py",
+          "line": 199,
+          "message": "multiple exception types must be parenthesized"
+        },
+        {
+          "file": "JARVIS-main/plugins/chat_takeover.py",
+          "line": 765,
+          "message": "multiple exception types must be parenthesized"
+        },
+        {
+          "file": "JARVIS-main/plugins/pomodoro.py",
+          "line": 315,
+          "message": "multiple exception types must be parenthesized"
+        },
+        {
+          "file": "JARVIS-main/plugins/trading_agent.py",
+          "line": 107,
+          "message": "multiple exception types must be parenthesized"
+        },
+        {
+          "file": "JARVIS-main/plugins/water_reminder.py",
+          "line": 134,
+          "message": "multiple exception types must be parenthesized"
+        }
+      ]
+    }
+  },
+  "runtime": {
+    "python": "3.11.17 (main, Oct  3 2026, 01:03:09) [MSC v.1944 64 bit (AMD64)]",
+    "hardware": {
+      "logical_cpus": 12,
+      "ram_total_gib": 15.73,
+      "ram_available_gib": 1.39
+    },
+    "data_directory": "C:\\Users\\Элдос\\AppData\\Local\\Eidos",
+    "app": {
+      "whisper_model": "base",
+      "device": "cpu",
+      "speak": true,
+      "tts_provider": "edge",
+      "tts_voice": "ru-RU-DmitryNeural",
+      "continuous_listening": false,
+      "wake_word_enabled": true,
+      "close_to_tray": false,
+      "floating_enabled": true,
+      "gesture_mode": "auto",
+      "gesture_fps": 15
+    },
+    "wake_model_readiness": {
+      "wake_keyword_path": false,
+      "wake_model_path": false
+    },
+    "agent": {
+      "provider": "ollama",
+      "model": "qwen3:4b-instruct-2507-q4_K_M",
+      "cloud_model": "gpt-4.1-mini",
+      "context_size": 2048,
+      "memory_enabled": true,
+      "onboarding_done": true,
+      "telegram_enabled": false,
+      "discord_enabled": false,
+      "search_provider": "brave",
+      "timezone": "Asia/Bishkek",
+      "approved_app_count": 1,
+      "remote_permissions": [],
+      "allowlist_counts": {
+        "telegram_users": 0,
+        "telegram_channels": 0,
+        "discord_users": 0,
+        "discord_channels": 0
+      }
+    },
+    "ollama_version": {
+      "version": "0.40.2"
+    },
+    "ollama_tags": {
+      "models": [
+        {
+          "name": "qwen3:4b-instruct-2507-q4_K_M",
+          "model": "qwen3:4b-instruct-2507-q4_K_M",
+          "modified_at": "2026-10-10T01:25:34.893204+06:00",
+          "size": 2497293803,
+          "digest": "0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0",
+          "details": {
+            "parent_model": "",
+            "format": "gguf",
+            "family": "qwen3",
+            "families": [
+              "qwen3"
+            ],
+            "parameter_size": "4.0B",
+            "quantization_level": "Q4_K_M",
+            "context_length": 262144,
+            "embedding_length": 2560,
+            "runner": "ggml"
+          },
+          "capabilities": [
+            "tools",
+            "thinking",
+            "completion"
+          ]
+        }
+      ]
+    },
+    "ollama_ps": {
+      "models": []
+    },
+    "porcupine_package": null,
+    "ollama_listeners": [
+      {
+        "ip": "127.0.0.1",
+        "port": 11434
+      }
+    ]
+  },
+  "synthetic_probes": {
+    "document_write_first_local_task": {
+      "confirmation_calls": 0,
+      "write_verified": true,
+      "scope": "Raw registry only, not the normal chat path."
+    },
+    "document_write_normal_chat_context": {
+      "confirmation_calls": 1,
+      "denied_on_rejected_confirmation": true
+    },
+    "translation_secret_egress": {
+      "known_secret_in_outgoing_request": true,
+      "real_network_called": false
+    },
+    "retry_policy": {
+      "safe_retry_skips_untrusted_confirmation": true,
+      "note": "Current camera_status is read-only; audit of future tool flags is required."
+    },
+    "remote_denied_document_read": true,
+    "remote_denied_document_write": true,
+    "remote_denied_screen_read_text": true,
+    "remote_denied_calendar_list": true
+  }
+}

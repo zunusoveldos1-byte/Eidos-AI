@@ -19,10 +19,10 @@ def window(app, tmp_path):
     wait_until(app, lambda: window._allow_close)
 
 
-def test_eight_sections_and_one_character(window):
+def test_five_destinations_and_one_character(window):
     assert [b.accessibleName() for b in window.sidebar.buttons] == [
-        'Главная', 'Диалог', 'Голос', 'Экран и перевод', 'Камера и жесты', 'Инструменты', 'Память', 'Настройки']
-    assert window.pages.count() == 8
+        'Главная', 'Экран и перевод', 'Камера и жесты', 'Инструменты', 'Настройки']
+    assert window.pages.count() == 7
     assert len(window.findChildren(Mascot)) == 1
     for page in window.sidebar.page_ids:
         window.navigate(page)
@@ -31,7 +31,7 @@ def test_eight_sections_and_one_character(window):
     for shortcut in window.findChildren(QShortcut):
         if shortcut.key().toString() == 'Ctrl+2':
             shortcut.activated.emit()
-    assert window.pages.currentIndex() == 5
+    assert window.pages.currentIndex() == 3
 
 
 def test_transfer_keeps_character_controllers_and_live_state(window):
@@ -75,9 +75,9 @@ def test_capture_restores_single_desktop_character(window):
 
 def test_form_ownership_without_duplicate_settings(window):
     assert window.settings.tts_voice is window.voice.tts_voice
-    assert window.assistant.tabs.count() == 1
+    assert window.assistant.tabs.count() == 0
     assert window.assistant.memory_list.isAncestorOf(window.assistant.memory_list.viewport())
-    assert window.memory.isAncestorOf(window.assistant.memory_list)
+    assert not window.assistant.sections['Память'].isVisibleTo(window)
     assert window.settings.isAncestorOf(window.assistant.provider)
     assert window.tools.isAncestorOf(window.assistant.calendar_list)
 

@@ -1,0 +1,44 @@
+ M docs/screenshots/home-refresh/native/1200-800-collapsed-dpi-1.png
+ M docs/screenshots/home-refresh/native/1200-800-expanded-dpi-1.png
+ M docs/screenshots/home-refresh/native/1674-940-collapsed-dpi-1.png
+ M docs/screenshots/home-refresh/native/1674-940-expanded-dpi-1.png
+ M docs/screenshots/home-refresh/native/780-560-collapsed-dpi-1.png
+ M docs/screenshots/home-refresh/native/780-560-expanded-dpi-1.png
+ M docs/screenshots/home-refresh/native/waves-start-dpi-1.png
+ M eidos/modules/voice/controller.py
+ M eidos/modules/voice/recorder.py
+ M eidos/modules/voice/wake.py
+ M eidos/modules/voice/worker.py
+ M eidos/ui/assistant_bindings.py
+ M eidos/ui/background.py
+ M eidos/ui/main_window.py
+ M eidos/ui/mascot_placement.py
+ M eidos/ui/pages/home.py
+ M eidos/ui/pages/voice.py
+ M eidos/ui/pages/workspace.py
+ M eidos/ui/sidebar.py
+ M eidos/ui/theme.py
+ M scripts/verify_home_refresh.py
+ M tests/test_agent_ui.py
+ M tests/test_home_refresh.py
+ M tests/test_redesign.py
+ M tests/test_ui.py
+ M tests/test_voice_indicator.py
+ M tests/test_workspace.py
+?? docs/audit-2026-10-13/
+?? docs/home-voice-update.md
+?? docs/minimal-voice-update.md
+?? docs/project-audit-2026-10-13.md
+?? docs/screenshots/home-voice/
+?? docs/screenshots/minimal-voice/
+?? docs/screenshots/wave-hover/
+?? docs/wave-hover-update.md
+?? eidos/assets/icons/moon.svg
+?? eidos/assets/icons/warning.svg
+?? eidos/ui/voice_page_orb.py
+?? eidos/ui/waves.py
+?? scripts/capture_home_voice.py
+?? scripts/capture_minimal_voice.py
+?? scripts/capture_wave_hover.py
+?? tests/test_minimal_voice.py
+?? tests/test_wave_hover.py

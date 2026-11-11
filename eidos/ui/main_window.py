@@ -3,9 +3,10 @@ from dataclasses import replace
 from datetime import datetime
 import logging
 
-from PyQt6.QtCore import QEvent, QEasingCurve, QPropertyAnimation, QSignalBlocker, QTimer, Qt, pyqtSlot
+from PyQt6.QtCore import QEvent, QEasingCurve, QLocale, QPropertyAnimation, QSignalBlocker, QTimer, Qt, pyqtSlot
 from PyQt6.QtGui import QCloseEvent, QIcon, QKeySequence, QShortcut
-from PyQt6.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QMenu, QMessageBox, QStackedWidget, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QHBoxLayout, QStackedWidget, QVBoxLayout
+from eidos.ui.localized import QMainWindow, QMenu, QMessageBox, QWidget
 
 from eidos.core.config import AppConfig, ConfigStore
 from eidos.modules.voice.controller import VoiceController
@@ -37,14 +38,26 @@ class MainWindow(AssistantBindings, QMainWindow):
     _closing_windows = set()
     def __init__(self, store: ConfigStore | None = None) -> None:
         super().__init__()
+        from .localized import install_native_translator
+        install_native_translator()
         install_font()
         self.store = store or ConfigStore()
         self.config = self.store.load()
+        from eidos.core.i18n import set_language
+        set_language(self.config.ui_language)
+        from eidos.core.startup import WindowsStartup
+        self.startup = WindowsStartup()
+        self._startup_error = ''
+        try:
+            self.config = replace(self.config, startup_enabled=self.startup.enabled())
+        except (OSError, ValueError):
+            self._startup_error = 'Не удалось проверить автозапуск Windows.'
         self.agent_service = AgentService(self.store.path.parent)
         self._allow_close = False
         self._closing = False
         self._microphones: list[Microphone] = []
         self._updating = False
+        self._device_inventory_error = False
         self.current_state = 'idle'
         self.compact = False
         self._normal_geometry = None
@@ -54,6 +67,10 @@ class MainWindow(AssistantBindings, QMainWindow):
         self.setMinimumSize(780, 560)
         self.setStyleSheet(STYLE)
         self._build_ui()
+        from .toast import Toasts
+        self.toasts = Toasts(self)
+        self.assistant.feedback.notification.connect(self.toasts.show)
+        self.gestures.notice.connect(self.toasts.show)
         self.controller = VoiceController(self.store.path.parent / 'models', self)
         self.controller.state_changed.connect(self._state_changed)
         self.controller.transcript.connect(self.voice.recognized.text.setPlainText)
@@ -65,10 +82,8 @@ class MainWindow(AssistantBindings, QMainWindow):
         self.translation.stopped.connect(self._translation_stopped)
         self.sidebar.selected.connect(self.navigate)
         self.home.navigate_requested.connect(self.navigate)
-        self.home.conversation_requested.connect(lambda: (self.navigate(1), self._action()))
-        self.home.capture_requested.connect(lambda: (self.navigate(3), self.translation.start_capture()))
+        self.home.capture_requested.connect(lambda: self.translation.start_capture())
         self.home.compact_requested.connect(lambda: self.set_compact(True))
-        self.home.task_requested.connect(self._home_task)
         self.home.app_requested.connect(self._home_apps)
         self.return_button.clicked.connect(lambda: self.set_compact(False))
         self.voice.action_requested.connect(self._action)
@@ -79,6 +94,8 @@ class MainWindow(AssistantBindings, QMainWindow):
         self.settings.reset_requested.connect(self._reset_settings)
         voice_blocker = QSignalBlocker(self.voice.speak)
         self.settings.load(self.config)
+        self.settings.startup_status.setText(self._startup_error or
+            ('Автозапуск зарегистрирован' if self.config.startup_enabled else 'Автозапуск выключен'))
         del voice_blocker
         self.translation.load_preferences(self.config)
         self.translation.preferences_changed.connect(self._translation_preferences_changed)
@@ -106,18 +123,16 @@ class MainWindow(AssistantBindings, QMainWindow):
         if self.store.warning:
             self._log(self.store.warning)
         self._log(f'Eidos готов. Активация включается отдельно. Лимит команды — {self.config.voice_max_seconds} секунд.')
-        self._init_agent(show_onboarding=store is None)
+        self._init_agent(show_onboarding=False)
+        self.controller.transcript.connect(lambda text: self.assistant.history.appendPlainText('Вы\n' + text + '\n') if text.strip() else None)
+        self.controller.reply.connect(lambda text: self.assistant.history.appendPlainText('Eidos\n' + text + '\n') if text.strip() else None)
         from .background import BackgroundControls
         self.background = BackgroundControls(self)
         self.character.clicked.connect(self.background.voice_action)
         self.settings.character_button.clicked.connect(self.placement.show_character)
-        self.assistant.voice_input.clicked.connect(lambda: (self.navigate(1), self.background.voice_action()))
         self.voice.stop_requested.connect(self.background.stop_action)
         self.voice.mute_requested.connect(self.background.toggle_pause)
         self.voice.compact_requested.connect(self._show_voice_widget)
-        self.settings.onboarding_requested.connect(self._show_onboarding)
-        self.settings.profile_requested.connect(self._switch_profile)
-        self._load_profile_choices()
         self.controller.reply.connect(self._voice_reply_speech)
         self.controller.worker.finished.connect(self._voice_cycle_finished)
         self.settings.sample_requested.connect(self._speech_sample)
@@ -133,7 +148,7 @@ class MainWindow(AssistantBindings, QMainWindow):
         self.translation.original.text.textChanged.connect(lambda: setattr(self.agent_service, 'screen_text', None))
         self.gestures.status_changed.connect(lambda text: setattr(self.agent_service, 'camera_status', text))
         self.gestures.status_changed.connect(self._camera_indicator)
-        self._camera_indicator(self.gestures.camera_status.text())
+        self._camera_indicator(self.gestures.camera_status.source_text())
         self.translation.translated.text.textChanged.connect(self._translation_voice_result)
         QTimer.singleShot(0, self._refresh)
 
@@ -142,21 +157,14 @@ class MainWindow(AssistantBindings, QMainWindow):
             self.translation.feedback.setText('Сначала выделите область или введите текст.')
             return
         self.agent_service.screen_text = text[:12000]
-        self.navigate(5)
+        self.navigate(3)
         if self._start_agent_task('screen_explain', text[:12000]):
             self.assistant.history.appendPlainText('Вы\nОбъясни текст выбранной области:\n' + text[:12000] + '\n')
 
     def _camera_indicator(self, text):
         self.home.set_camera_status(text)
         self.camera_indicator.setText(text)
-        self.camera_indicator.setVisible(self.pages.currentIndex() != 0 and ('включена' in text or 'Включаю' in text))
-
-    def _home_task(self, text):
-        self.navigate(5)
-        self.assistant.input.setPlainText(text)
-        self._send_chat()
-        if not self.assistant.input.toPlainText():
-            self.home.input.clear()
+        self.camera_indicator.hide()
 
     def _home_apps(self):
         if hasattr(self, 'app_menu'):
@@ -227,6 +235,8 @@ class MainWindow(AssistantBindings, QMainWindow):
     def _sync_home_motion(self, *args):
         if hasattr(self, 'home'):
             self.home.set_animations(self._motion_enabled())
+            self.sidebar.set_animations(self._motion_enabled() and not self.isMinimized())
+            self.voice.mascot.set_animations(self._motion_enabled() and not self.isMinimized())
         if hasattr(self, 'character'):
             self.character.set_animations(self._motion_enabled() and not self.isMinimized())
 
@@ -270,16 +280,20 @@ class MainWindow(AssistantBindings, QMainWindow):
         self.pages = QStackedWidget()
         self.home = HomePage()
         self.voice = VoicePage()
+        self.home.attach_voice(self.voice)
+        self.voice.mascot.presentation_changed.connect(self._home_voice_status)
         self.gestures = GesturesPage(self.store.path.parent / 'models' / 'vision')
         self.translation = TranslationPage()
         self.settings = SettingsPage()
         for page in (self.home, self.voice, self.gestures, self.translation, self.settings):
             self.pages.addWidget(page)
         self.assistant = AssistantPage(self.agent_service)
-        self.pages.addWidget(self.assistant)
+        self.assistant.setParent(self)
+        self.assistant.hide()
+        # Stable service IDs; removed destinations never host a visible page.
+        self.pages.addWidget(QWidget())
         reorganize(self)
         self.pages.addWidget(self.tools)
-        self.pages.addWidget(self.memory)
         self.assistant.feedback.setStyleSheet('color: #A8B7AE; padding: 0px 28px;')
         content.addWidget(self.assistant.feedback)
         from .components import label
@@ -303,15 +317,20 @@ class MainWindow(AssistantBindings, QMainWindow):
 
     @pyqtSlot(int)
     def navigate(self, index: int) -> None:
+        if index in (5, 7):
+            return
+        # Keep old shortcuts and service entry points stable after moving voice.
+        if index == 1:
+            index = 0
         if not 0 <= index < self.pages.count():
             return
-        if self.compact and index != 1:
+        if self.compact and index != 0:
             self.set_compact(False)
         self.pages.setCurrentIndex(index)
         self.sidebar.activate(index)
         self.placement._visibility()
         self.home.sync_motion()
-        self.camera_indicator.setVisible(index != 0 and 'включена' in self.camera_indicator.text())
+        self.camera_indicator.hide()
 
     def set_compact(self, enabled: bool) -> None:
         if self.compact == enabled:
@@ -329,8 +348,8 @@ class MainWindow(AssistantBindings, QMainWindow):
             self.menu_button.setAccessibleName('Показать меню')
             self.voice.header.setContentsMargins(34, 0, 0, 0)
             self.return_button.show()
-            self.pages.setCurrentIndex(1)
-            self.sidebar.activate(1)
+            self.pages.setCurrentIndex(0)
+            self.sidebar.activate(0)
             self.resize(560, 720)
         else:
             self.setMinimumSize(780, 560)
@@ -340,6 +359,23 @@ class MainWindow(AssistantBindings, QMainWindow):
                 self.restoreGeometry(self._normal_geometry)
 
     def _apply_preferences(self) -> None:
+        self.setLocale(QLocale(self.config.ui_language))
+        from eidos.core.i18n import set_language
+        set_language(self.config.ui_language)
+        from .theme import style_for
+        self.setStyleSheet(style_for(self.config.theme, self.config.accent_color))
+        # The home illustration and custom painters use the original dark
+        # palette. Keep their text/background together when the shell is light.
+        self.home.setStyleSheet(STYLE if self.config.theme == 'light' else '')
+        from PyQt6.QtWidgets import QLabel
+        for image in self.findChildren(QLabel):
+            symbol = image.property('headingIcon')
+            if symbol:
+                image.setPixmap(icon(symbol, '#15291F' if self.config.theme == 'light' else '#F2F6F3').pixmap(25, 25))
+        for control in self.sidebar.buttons:
+            control.apply_theme(self.config.theme, self.config.accent_color)
+        if hasattr(self, 'agent_controller'):
+            self._refresh_skills()
         self._update_processing_info()
         self._update_hotkey_hints()
         if hasattr(self, 'background'):
@@ -350,6 +386,7 @@ class MainWindow(AssistantBindings, QMainWindow):
         for mascot in self.findChildren(Mascot) + self.findChildren(VoiceOrb):
             mascot.set_animations(self._motion_enabled())
         self.home.set_animations(self._motion_enabled())
+        self.sidebar.set_animations(self._motion_enabled())
         if not self.compact and self.menu_button.isChecked() != self.config.sidebar_collapsed:
             self._set_sidebar(self.config.sidebar_collapsed, animate=False)
         target_flag = Qt.WindowType.WindowStaysOnTopHint
@@ -362,10 +399,12 @@ class MainWindow(AssistantBindings, QMainWindow):
 
     def _update_processing_info(self):
         settings = self.agent_service.settings
-        model = 'Модель: Ollama на выбранном сервере ' + settings.ollama_url if settings.provider == 'ollama' else 'Модель: OpenAI — запрос и выбранный контекст отправляются внешнему провайдеру'
+        model = ('Модель: Ollama на выбранном сервере ' + settings.ollama_url if settings.provider == 'ollama'
+            else 'Модель: Gemini — запрос и выбранный контекст отправляются в Google' if settings.provider == 'gemini'
+            else 'Модель: OpenAI — запрос и выбранный контекст отправляются внешнему провайдеру')
         tts = 'Озвучка: Windows SAPI локально' if self.config.tts_provider == 'sapi' else 'Озвучка: Edge онлайн, отправляется текст ответа'
         translation = 'Перевод: Google онлайн, отправляется только текст' if self.config.translation_provider else 'Внешний перевод выключен'
-        self.settings.processing_info.setText(model + '.\nOCR и Whisper: локально. ' + tts + '.\n' + translation + '. Камера и распознавание жестов: локально, видео не сохраняется и не отправляется.')
+        self.settings.processing_info.setText(model + '.\nOCR и STT: локально. ' + tts + '.\n' + translation + '. Камера и распознавание жестов: локально, видео не сохраняется и не отправляется.')
 
     def _persist(self, config: AppConfig) -> bool:
         try:
@@ -382,8 +421,15 @@ class MainWindow(AssistantBindings, QMainWindow):
             self.settings.feedback.setText(self.gesture_hotkey.message)
             return False
         try:
+            if config.startup_enabled != self.config.startup_enabled:
+                self.startup.configure(config.startup_enabled)
             self.store.save(config)
         except (OSError, ValueError):
+            if config.startup_enabled != self.config.startup_enabled:
+                try:
+                    self.startup.configure(self.config.startup_enabled)
+                except (OSError, ValueError):
+                    self.settings.startup_status.setText('Не удалось восстановить автозапуск. Проверьте настройки Windows.')
             self.hotkeys.configure(self.config)
             self.gesture_hotkey.configure(self.config)
             self._log('Не удалось сохранить настройки. Проверьте доступ к папке профиля.')
@@ -392,6 +438,7 @@ class MainWindow(AssistantBindings, QMainWindow):
         gesture_changed = any(getattr(self.config, name) != getattr(config, name)
                               for name in config.__dataclass_fields__ if name.startswith('gesture_'))
         self.config = config
+        self.settings.startup_status.setText('Автозапуск зарегистрирован' if config.startup_enabled else 'Автозапуск выключен')
         if gesture_changed:
             self.gestures.emergency_stop()
             self.gestures.load(config)
@@ -446,7 +493,12 @@ class MainWindow(AssistantBindings, QMainWindow):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
         if response != QMessageBox.StandardButton.Yes:
             return
-        if self._persist(AppConfig()):
+        defaults = replace(AppConfig(), mascot_hidden=self.config.mascot_hidden,
+                           mascot_app_x=self.config.mascot_app_x,
+                           floating_enabled=self.config.floating_enabled,
+                           floating_pinned=self.config.floating_pinned,
+                           floating_x=self.config.floating_x, floating_y=self.config.floating_y)
+        if self._persist(defaults):
             self.settings.load(self.config)
             self.translation.load_preferences(self.config)
             self._select_microphone(self.voice.microphone, self.config)
@@ -481,6 +533,10 @@ class MainWindow(AssistantBindings, QMainWindow):
         microphone, name = self._microphone_choice(self.voice.microphone)
         if self._persist(replace(self.config, microphone=microphone, microphone_name=name)):
             self._select_microphone(self.settings.microphone, self.config)
+            if self._device_inventory_error and hasattr(self, 'background'):
+                self._device_inventory_error = False
+                self.background._microphone_changed('manual', 'inactive', '')
+                self.voice.mascot.set_state('ready')
         self._update_controls()
 
     def _select_microphone(self, control, config: AppConfig) -> None:
@@ -507,7 +563,7 @@ class MainWindow(AssistantBindings, QMainWindow):
             control.clear()
             control.addItem('Микрофон по умолчанию', None)
             for mic in microphones:
-                control.addItem(mic.name, mic.index)
+                control.addRawItem(mic.name, mic.index)
             if self.config.microphone is not None:
                 if selected:
                     control.setCurrentIndex(control.findData(selected.index))
@@ -519,13 +575,25 @@ class MainWindow(AssistantBindings, QMainWindow):
         self._updating = False
         if not microphones:
             self.voice.set_operation('Микрофоны не найдены. Подключите устройство и обновите список.')
-        elif self.voice.microphone.currentData() == -1:
+            self._device_inventory_error = True
+            if hasattr(self, 'background'):
+                self.background._microphone_changed('manual', 'error', 'Микрофон не найден')
+        elif self._device_inventory_error:
+            self._device_inventory_error = False
+            if hasattr(self, 'background'):
+                self.background._microphone_changed('manual', 'inactive', '')
+            self.voice.mascot.set_state('ready')
+        if self.voice.microphone.currentData() == -1:
             self.voice.set_operation('Сохранённый микрофон недоступен. Выберите другой.')
+            self._device_inventory_error = True
+            if hasattr(self, 'background'):
+                self.background._microphone_changed('manual', 'error', 'Выбранный микрофон не найден')
         self._log(f'Найдено входных устройств: {len(microphones)}.')
         self._update_controls()
 
     @pyqtSlot(str)
     def _devices_error(self, message: str) -> None:
+        self._device_inventory_error = True
         self._microphones = []
         self.voice.show_state('error', message)
         self._log(message)
@@ -543,6 +611,7 @@ class MainWindow(AssistantBindings, QMainWindow):
         waking = hasattr(self, 'background') and self.background.wake.capturing
         self.voice.action_button.setEnabled(not self.controller.closing and
             (hasattr(self, 'background') and self.background.listen_enabled or
+             not unavailable and not busy and not agent_busy and self.voice.mascot.ui_state == 'error' or
              not unavailable and not busy and not agent_busy and can_start))
         if hasattr(self, 'background'):
             self.background.floating.start_button.setEnabled(self.voice.action_button.isEnabled())
@@ -556,8 +625,11 @@ class MainWindow(AssistantBindings, QMainWindow):
     def _state_changed(self, state: str, message: str) -> None:
         self.current_state = state
         visual_state = 'error' if state == 'idle' and message.startswith('Ошибка') else state
+        if visual_state == 'error' and state == 'idle' and self.voice.mascot.state == 'error':
+            # Worker completion must retain the actionable original service error.
+            message = self.voice.mascot.message or message
         self.voice.show_state(visual_state, message)
-        self.home.status.setText('●  ' + {'idle': 'Готов помочь', 'recording': 'Слушаю', 'loading': 'Подготовка', 'transcribing': 'Распознаю', 'thinking': 'Думаю', 'speaking': 'Говорю', 'error': 'Нужна проверка'}.get(state, 'Работаю'))
+        self.home.status.setText('●  ' + {'idle': 'Готов помочь', 'recording': 'Слушаю', 'loading': 'Подготовка', 'transcribing': 'Распознаю', 'thinking': 'Думаю', 'speaking': 'Говорю', 'error': 'Нужна проверка'}.get(visual_state, 'Работаю'))
         self.home.status.setToolTip(message)
         self.sidebar.logo.set_state(self.voice.mascot.state)
         if hasattr(self, 'background'):
@@ -571,11 +643,33 @@ class MainWindow(AssistantBindings, QMainWindow):
         if hasattr(self, 'agent_controller'):
             self._agent_controls()
 
+    def _home_voice_status(self):
+        orb = self.voice.mascot
+        if orb.ui_state == 'error' or orb.state == 'error':
+            self.home.status.setText('●  Нужна проверка')
+            self.home.status.setToolTip(orb.copy()[0])
+        elif orb.state in ('thinking', 'acting', 'speaking'):
+            self.home.status.setText('●  ' + {'thinking': 'Думаю', 'acting': 'Выполняю', 'speaking': 'Говорю'}[orb.state])
+        elif orb.ui_state == 'active':
+            self.home.status.setText('●  Слушаю')
+        elif orb.ui_state == 'sleep':
+            self.home.status.setText('●  Спит')
+        elif orb.state == 'ready':
+            self.home.status.setText('●  Готов помочь')
+
     @pyqtSlot()
     def _action(self) -> None:
         if not self.voice.action_button.isEnabled():
             return
         if hasattr(self, 'background'):
+            if self.voice.mascot.ui_state == 'error' and not self._microphones:
+                self._refresh()
+                return
+            if self.voice.mascot.ui_state == 'active' and not self.background.listen_enabled:
+                self.background.stop_voice_input()
+                return
+            if self.voice.mascot.ui_state == 'off' and self.background.listen_enabled:
+                self.background.stop_voice_input()
             self.background.voice_action()
             return
         if self.controller.active or self.controller.playback.active:
@@ -593,20 +687,26 @@ class MainWindow(AssistantBindings, QMainWindow):
 
     @pyqtSlot(str)
     def _log(self, message: str) -> None:
-        self.voice.journal.appendPlainText(f'{datetime.now():%H:%M:%S}  {message}')
+        # Shutdown can still deliver worker log signals. Keep the file log,
+        # but do not update QTextDocument/layouts on a closing window.
+        if not self._closing:
+            self.voice.journal.appendPlainText(f'{datetime.now():%H:%M:%S}  {message}')
         logging.getLogger('eidos').info(message)
 
     @pyqtSlot()
     def _closed(self) -> None:
         if not self._closing:
             return
-        if hasattr(self, 'background') and (self.background.speech.is_running or self.background.wake.is_running):
+        if hasattr(self, 'background') and (self.background.speech.is_running or self.background.wake.is_running
+                                           or (self.background.latch and self.background.latch.isRunning())):
             return
         if hasattr(self, 'agent_controller') and self.agent_controller.thread.isRunning():
             return
         if self.controller.thread.isRunning() or self.translation.is_running:
             return
         if self.gestures.is_running:
+            return
+        if hasattr(self, 'session_monitor') and self.session_monitor.isRunning():
             return
         self._allow_close = True
         QTimer.singleShot(0, self._finish_close)
@@ -643,11 +743,9 @@ class MainWindow(AssistantBindings, QMainWindow):
             return
         if action == 'capture':
             if not self.translation.is_running and not self.translation._selecting:
-                self.navigate(3)
                 self.translation.start_capture()
         elif action == 'repeat':
             if not self.translation.is_running and not self.translation._selecting:
-                self.navigate(3)
                 self.translation.refresh_capture()
         elif action == 'dismiss':
             if self.translation._selecting:
@@ -669,6 +767,12 @@ class MainWindow(AssistantBindings, QMainWindow):
                 self.hide()
                 return
             self._closing = True
+            if hasattr(self, 'session_monitor'):
+                self.session_monitor.stop()
+            if hasattr(self, 'desktop_ui'):
+                self.desktop_ui.hide_power()
+            if hasattr(self, 'toasts'):
+                self.toasts.close()
             self._closing_windows.add(self)
             if hasattr(self, 'background'):
                 self.background.shutdown()
@@ -682,6 +786,23 @@ class MainWindow(AssistantBindings, QMainWindow):
     def request_exit(self):
         self._closing = True
         self.close()
+
+    def nativeEvent(self, event_type, message):
+        import os
+        if (os.name == 'nt' and bytes(event_type) in (b'windows_generic_MSG', b'windows_dispatcher_MSG')
+                and hasattr(self, 'session_monitor')):
+            try:
+                import ctypes
+                from ctypes.wintypes import MSG
+                msg = MSG.from_address(int(message))
+                if msg.message in (0x11, 0x16) or (msg.message == 0x218 and msg.wParam == 4):
+                    self.session_monitor.snapshot()
+            except (ValueError, TypeError, OSError):
+                pass
+        # This observer never consumes an event. Calling the Qt base virtual
+        # here crashes the Windows PyQt trampoline while showing the HWND.
+        # False lets Qt perform its normal platform processing after return.
+        return False, 0
 
     def _voice_reply_speech(self, text):
         full = self.controller.worker.full_reply
@@ -755,6 +876,8 @@ class MainWindow(AssistantBindings, QMainWindow):
             ui.provider.setCurrentIndex(ui.provider.findData(settings.provider))
             ui.model_name.setText(settings.model)
             ui.cloud_model.setText(settings.cloud_model)
+            ui.gemini_model.setText(settings.gemini_model)
+            ui.gemini_key.clear()
             ui.ollama_url.setText(settings.ollama_url)
             ui.context_size.setValue(settings.context_size)
             ui.search_provider.setCurrentIndex(ui.search_provider.findData(settings.search_provider))

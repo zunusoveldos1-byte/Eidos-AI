@@ -1,0 +1,40 @@
+{
+  "visual_qa_injected_signals": true,
+  "silence_freezes_phase": true,
+  "real_devices_started": false,
+  "dpr": 1.25,
+  "layout": [
+    {
+      "size": [
+        1320,
+        800
+      ],
+      "collapsed": false,
+      "horizontal_scroll": 0
+    },
+    {
+      "size": [
+        780,
+        560
+      ],
+      "collapsed": false,
+      "horizontal_scroll": 0
+    },
+    {
+      "size": [
+        1320,
+        800
+      ],
+      "collapsed": true,
+      "horizontal_scroll": 0
+    },
+    {
+      "size": [
+        780,
+        560
+      ],
+      "collapsed": true,
+      "horizontal_scroll": 0
+    }
+  ]
+}

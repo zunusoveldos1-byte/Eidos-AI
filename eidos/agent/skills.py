@@ -16,7 +16,7 @@ def catalog(model_connected=False, search_ready=True):
     ai = 'Доступен' if model_connected else 'Требуется подключение'
     return [
         Skill('Поиск и краткое изложение', 'Brave API возвращает источники; DuckDuckGo/Bing открывают поиск в браузере. Чтение публичной страницы и изложение через модель.', ('web_search','web_read'), 'Модель; интернет; Brave key для поиска через API', ('browser.open','browser.read'), ai if search_ready else 'Требуется подключение'),
-        Skill('Программирование', 'Объяснение и подготовка кода в диалоге. Автоматический запуск кода отсутствует.', (), 'Ollama или OpenAI', (), ai),
+        Skill('Программирование', 'Объяснение и подготовка кода в диалоге. Автоматический запуск кода отсутствует.', (), 'Ollama, OpenAI или Gemini', (), ai),
         Skill('Тексты и письма', 'Подготовка черновика. Отправка только через подключённого бота с подтверждением.', ('document_write',), 'Модель для составления', ('documents.write',), ai),
         Skill('Документы', 'Чтение выбранного файла; создание TXT/MD/DOCX/PDF, новой версии текста.', ('document_read','document_write'), 'Файл / рабочая папка выбраны пользователем', ('documents.read','documents.write'), 'Доступен'),
         Skill('Таблицы', 'Чтение XLSX (200 строк на лист); создание новой таблицы из TSV без формул.', ('document_read','document_write'), 'Выбран файл / папка', ('documents.read','documents.write'), 'Доступен'),

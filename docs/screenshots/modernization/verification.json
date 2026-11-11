@@ -1,0 +1,293 @@
+{
+  "pages": [
+    {
+      "language": "ru",
+      "page": "home",
+      "navigation": [
+        "Главная",
+        "Экран и перевод",
+        "Камера и жесты",
+        "Инструменты",
+        "Настройки"
+      ]
+    },
+    {
+      "language": "ru",
+      "page": "screen",
+      "navigation": [
+        "Главная",
+        "Экран и перевод",
+        "Камера и жесты",
+        "Инструменты",
+        "Настройки"
+      ]
+    },
+    {
+      "language": "ru",
+      "page": "camera",
+      "navigation": [
+        "Главная",
+        "Экран и перевод",
+        "Камера и жесты",
+        "Инструменты",
+        "Настройки"
+      ]
+    },
+    {
+      "language": "ru",
+      "page": "tools",
+      "navigation": [
+        "Главная",
+        "Экран и перевод",
+        "Камера и жесты",
+        "Инструменты",
+        "Настройки"
+      ]
+    },
+    {
+      "language": "ru",
+      "page": "settings",
+      "navigation": [
+        "Главная",
+        "Экран и перевод",
+        "Камера и жесты",
+        "Инструменты",
+        "Настройки"
+      ]
+    },
+    {
+      "language": "en",
+      "page": "home",
+      "navigation": [
+        "Home",
+        "Screen and translation",
+        "Camera and gestures",
+        "Tools",
+        "Settings"
+      ]
+    },
+    {
+      "language": "en",
+      "page": "screen",
+      "navigation": [
+        "Home",
+        "Screen and translation",
+        "Camera and gestures",
+        "Tools",
+        "Settings"
+      ]
+    },
+    {
+      "language": "en",
+      "page": "camera",
+      "navigation": [
+        "Home",
+        "Screen and translation",
+        "Camera and gestures",
+        "Tools",
+        "Settings"
+      ]
+    },
+    {
+      "language": "en",
+      "page": "tools",
+      "navigation": [
+        "Home",
+        "Screen and translation",
+        "Camera and gestures",
+        "Tools",
+        "Settings"
+      ]
+    },
+    {
+      "language": "en",
+      "page": "settings",
+      "navigation": [
+        "Home",
+        "Screen and translation",
+        "Camera and gestures",
+        "Tools",
+        "Settings"
+      ]
+    },
+    {
+      "language": "ky",
+      "page": "home",
+      "navigation": [
+        "Башкы бет",
+        "Экран жана котормо",
+        "Камера жана жаңсоолор",
+        "Аспаптар",
+        "Жөндөөлөрү"
+      ]
+    },
+    {
+      "language": "ky",
+      "page": "screen",
+      "navigation": [
+        "Башкы бет",
+        "Экран жана котормо",
+        "Камера жана жаңсоолор",
+        "Аспаптар",
+        "Жөндөөлөрү"
+      ]
+    },
+    {
+      "language": "ky",
+      "page": "camera",
+      "navigation": [
+        "Башкы бет",
+        "Экран жана котормо",
+        "Камера жана жаңсоолор",
+        "Аспаптар",
+        "Жөндөөлөрү"
+      ]
+    },
+    {
+      "language": "ky",
+      "page": "tools",
+      "navigation": [
+        "Башкы бет",
+        "Экран жана котормо",
+        "Камера жана жаңсоолор",
+        "Аспаптар",
+        "Жөндөөлөрү"
+      ]
+    },
+    {
+      "language": "ky",
+      "page": "settings",
+      "navigation": [
+        "Башкы бет",
+        "Экран жана котормо",
+        "Камера жана жаңсоолор",
+        "Аспаптар",
+        "Жөндөөлөрү"
+      ]
+    },
+    {
+      "language": "uz",
+      "page": "home",
+      "navigation": [
+        "Bosh sahifa",
+        "Ekran va tarjima",
+        "Kamera va imo-ishoralar",
+        "Asboblar",
+        "Sozlamalar"
+      ]
+    },
+    {
+      "language": "uz",
+      "page": "screen",
+      "navigation": [
+        "Bosh sahifa",
+        "Ekran va tarjima",
+        "Kamera va imo-ishoralar",
+        "Asboblar",
+        "Sozlamalar"
+      ]
+    },
+    {
+      "language": "uz",
+      "page": "camera",
+      "navigation": [
+        "Bosh sahifa",
+        "Ekran va tarjima",
+        "Kamera va imo-ishoralar",
+        "Asboblar",
+        "Sozlamalar"
+      ]
+    },
+    {
+      "language": "uz",
+      "page": "tools",
+      "navigation": [
+        "Bosh sahifa",
+        "Ekran va tarjima",
+        "Kamera va imo-ishoralar",
+        "Asboblar",
+        "Sozlamalar"
+      ]
+    },
+    {
+      "language": "uz",
+      "page": "settings",
+      "navigation": [
+        "Bosh sahifa",
+        "Ekran va tarjima",
+        "Kamera va imo-ishoralar",
+        "Asboblar",
+        "Sozlamalar"
+      ]
+    },
+    {
+      "language": "kk",
+      "page": "home",
+      "navigation": [
+        "Басты бет",
+        "Экран және аударма",
+        "Камера және қимылдар",
+        "Құралдар",
+        "Параметрлер"
+      ]
+    },
+    {
+      "language": "kk",
+      "page": "screen",
+      "navigation": [
+        "Басты бет",
+        "Экран және аударма",
+        "Камера және қимылдар",
+        "Құралдар",
+        "Параметрлер"
+      ]
+    },
+    {
+      "language": "kk",
+      "page": "camera",
+      "navigation": [
+        "Басты бет",
+        "Экран және аударма",
+        "Камера және қимылдар",
+        "Құралдар",
+        "Параметрлер"
+      ]
+    },
+    {
+      "language": "kk",
+      "page": "tools",
+      "navigation": [
+        "Басты бет",
+        "Экран және аударма",
+        "Камера және қимылдар",
+        "Құралдар",
+        "Параметрлер"
+      ]
+    },
+    {
+      "language": "kk",
+      "page": "settings",
+      "navigation": [
+        "Басты бет",
+        "Экран және аударма",
+        "Камера және қимылдар",
+        "Құралдар",
+        "Параметрлер"
+      ]
+    }
+  ],
+  "catalogue_coverage": {
+    "ru": [],
+    "en": [],
+    "ky": [],
+    "uz": [],
+    "kk": []
+  },
+  "runtime_missing": [],
+  "missing_sources": {},
+  "local_activation_available": true,
+  "single_instance_lock": true,
+  "activation_received": true,
+  "clean_shutdown": true,
+  "limitations": "Offscreen captures; microphone/camera acquisition and registered OS hotkey were not activated."
+}

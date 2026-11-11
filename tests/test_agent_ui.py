@@ -66,19 +66,20 @@ def test_memory_disable_does_not_silently_remain_on_after_disk_error(app, tmp_pa
         app.processEvents()
 
 
-def test_chat_memory_tabs_and_profile_opt_in(app, tmp_path):
+def test_hidden_memory_preserves_consent_and_voice_agent_service(app, tmp_path):
     window = MainWindow(ConfigStore(tmp_path/'config.json'))
     window.show()
     try:
         wait_until(app, lambda:not window.controller.discovering)
         ui = window.assistant
-        assert ui.tabs.count()==1
-        assert window.memory.tabs.count()==2
-        assert window.settings.tabs.count()==3
+        assert ui.tabs.count()==0
+        assert window.pages.indexOf(ui) == -1
+        assert not ui.sections['Память'].isVisibleTo(window)
+        assert not ui.sections['Профиль'].isVisibleTo(window)
+        assert window.settings.tabs.count()==5
         assert not ui.memory_enabled.isChecked()
         assert not any(c.isChecked() for c in ui.remote_checks.values())
-        ui.input.setPlainText('Привет')
-        ui.send.click()
+        window._start_agent_task('chat', 'Привет')
         wait_until(app, lambda:not window.agent_controller.active)
         assert 'Привет! Я Eidos' in ui.history.toPlainText()
         assert not window.agent_service.memory.items()
@@ -88,8 +89,7 @@ def test_chat_memory_tabs_and_profile_opt_in(app, tmp_path):
         wait_until(app, lambda:not window.agent_controller.active)
         assert window.agent_service.memory.search('Python')
         ui.incognito.setChecked(True)
-        ui.input.setPlainText('Который час?')
-        ui.send.click()
+        window._start_agent_task('chat', 'Который час?')
         wait_until(app, lambda:not window.agent_controller.active)
         assert not window.agent_service.memory.items('dialogue')
     finally:

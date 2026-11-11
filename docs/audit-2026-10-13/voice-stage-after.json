@@ -1,0 +1,634 @@
+{
+  "source": "Windows SAPI synthetic Russian; no microphone capture; no commands executed",
+  "limitations": "WER from six synthetic phrases is not representative of live microphone accuracy.",
+  "cpu_count": 12,
+  "ram_total_gib": 15.73,
+  "engines": {
+    "whisper": {
+      "stages": {
+        "wake_detection": {},
+        "audio_buffering": {},
+        "model_load": {
+          "cold": {
+            "count": 1,
+            "p50_ms": 1015.415,
+            "p95_ms": 1015.415,
+            "min_ms": 1015.415,
+            "max_ms": 1015.415
+          }
+        },
+        "stt": {
+          "cold": {
+            "count": 1,
+            "p50_ms": 2911.475,
+            "p95_ms": 2911.475,
+            "min_ms": 2911.475,
+            "max_ms": 2911.475
+          },
+          "warm": {
+            "count": 23,
+            "p50_ms": 783.414,
+            "p95_ms": 844.816,
+            "min_ms": 683.533,
+            "max_ms": 866.291
+          }
+        },
+        "command_routing": {
+          "warm": {
+            "count": 256,
+            "p50_ms": 0.003,
+            "p95_ms": 0.003,
+            "min_ms": 0.003,
+            "max_ms": 0.016
+          }
+        },
+        "llm_first_token": {},
+        "tts": {}
+      },
+      "cases": [
+        {
+          "reference": "Открой блокнот",
+          "condition": "clean",
+          "repeat": 0,
+          "transcript": "Открой блокнот.",
+          "error": "",
+          "ms": 2911.475,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Открой блокнот",
+          "condition": "noise",
+          "repeat": 0,
+          "transcript": "Открой блокнот.",
+          "error": "",
+          "ms": 772.279,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Сделай громкость тридцать процентов",
+          "condition": "clean",
+          "repeat": 0,
+          "transcript": "Сделай громкость 30 процентов.",
+          "error": "",
+          "ms": 846.755,
+          "word_errors": 1,
+          "reference_words": 4,
+          "exact": false
+        },
+        {
+          "reference": "Сделай громкость тридцать процентов",
+          "condition": "noise",
+          "repeat": 0,
+          "transcript": "Сделай громкость 30%.",
+          "error": "",
+          "ms": 866.291,
+          "word_errors": 2,
+          "reference_words": 4,
+          "exact": false
+        },
+        {
+          "reference": "Прочитай перевод",
+          "condition": "clean",
+          "repeat": 0,
+          "transcript": "Прочитай перевод.",
+          "error": "",
+          "ms": 710.679,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Прочитай перевод",
+          "condition": "noise",
+          "repeat": 0,
+          "transcript": "Прочитай перевод.",
+          "error": "",
+          "ms": 789.635,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Который час",
+          "condition": "clean",
+          "repeat": 0,
+          "transcript": "Который час.",
+          "error": "",
+          "ms": 769.455,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Который час",
+          "condition": "noise",
+          "repeat": 0,
+          "transcript": "Который час.",
+          "error": "",
+          "ms": 724.35,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Да да повтори повтори",
+          "condition": "clean",
+          "repeat": 0,
+          "transcript": "Да, да, повтори повтори.",
+          "error": "",
+          "ms": 827.37,
+          "word_errors": 0,
+          "reference_words": 4,
+          "exact": true
+        },
+        {
+          "reference": "Да да повтори повтори",
+          "condition": "noise",
+          "repeat": 0,
+          "transcript": "Да, да, повтори, повтори.",
+          "error": "",
+          "ms": 826.713,
+          "word_errors": 0,
+          "reference_words": 4,
+          "exact": true
+        },
+        {
+          "reference": "Переведи область экрана",
+          "condition": "clean",
+          "repeat": 0,
+          "transcript": "Переведи область экрана.",
+          "error": "",
+          "ms": 742.359,
+          "word_errors": 0,
+          "reference_words": 3,
+          "exact": true
+        },
+        {
+          "reference": "Переведи область экрана",
+          "condition": "noise",
+          "repeat": 0,
+          "transcript": "Переведи область экрана.",
+          "error": "",
+          "ms": 783.414,
+          "word_errors": 0,
+          "reference_words": 3,
+          "exact": true
+        },
+        {
+          "reference": "Открой блокнот",
+          "condition": "clean",
+          "repeat": 1,
+          "transcript": "Открой блокнот.",
+          "error": "",
+          "ms": 785.446,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Открой блокнот",
+          "condition": "noise",
+          "repeat": 1,
+          "transcript": "Открой блокнот.",
+          "error": "",
+          "ms": 799.223,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Сделай громкость тридцать процентов",
+          "condition": "clean",
+          "repeat": 1,
+          "transcript": "Сделай громкость 30 процентов.",
+          "error": "",
+          "ms": 792.522,
+          "word_errors": 1,
+          "reference_words": 4,
+          "exact": false
+        },
+        {
+          "reference": "Сделай громкость тридцать процентов",
+          "condition": "noise",
+          "repeat": 1,
+          "transcript": "Сделай громкость 30%.",
+          "error": "",
+          "ms": 805.025,
+          "word_errors": 2,
+          "reference_words": 4,
+          "exact": false
+        },
+        {
+          "reference": "Прочитай перевод",
+          "condition": "clean",
+          "repeat": 1,
+          "transcript": "Прочитай перевод.",
+          "error": "",
+          "ms": 683.533,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Прочитай перевод",
+          "condition": "noise",
+          "repeat": 1,
+          "transcript": "Прочитай перевод.",
+          "error": "",
+          "ms": 783.463,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Который час",
+          "condition": "clean",
+          "repeat": 1,
+          "transcript": "Который час.",
+          "error": "",
+          "ms": 737.07,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Который час",
+          "condition": "noise",
+          "repeat": 1,
+          "transcript": "Который час.",
+          "error": "",
+          "ms": 760.848,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Да да повтори повтори",
+          "condition": "clean",
+          "repeat": 1,
+          "transcript": "Да, да, повтори повтори.",
+          "error": "",
+          "ms": 788.494,
+          "word_errors": 0,
+          "reference_words": 4,
+          "exact": true
+        },
+        {
+          "reference": "Да да повтори повтори",
+          "condition": "noise",
+          "repeat": 1,
+          "transcript": "Да, да, повтори, повтори.",
+          "error": "",
+          "ms": 780.616,
+          "word_errors": 0,
+          "reference_words": 4,
+          "exact": true
+        },
+        {
+          "reference": "Переведи область экрана",
+          "condition": "clean",
+          "repeat": 1,
+          "transcript": "Переведи область экрана.",
+          "error": "",
+          "ms": 739.847,
+          "word_errors": 0,
+          "reference_words": 3,
+          "exact": true
+        },
+        {
+          "reference": "Переведи область экрана",
+          "condition": "noise",
+          "repeat": 1,
+          "transcript": "Переведи область экрана.",
+          "error": "",
+          "ms": 720.418,
+          "word_errors": 0,
+          "reference_words": 3,
+          "exact": true
+        }
+      ],
+      "wer": 0.08823529411764706,
+      "exact_rate": 0.8333333333333334,
+      "errors": 0,
+      "peak_rss_mib": 331.22,
+      "cpu_percent_one_core": 362.39
+    },
+    "vosk": {
+      "stages": {
+        "wake_detection": {},
+        "audio_buffering": {},
+        "model_load": {
+          "cold": {
+            "count": 2,
+            "p50_ms": 997.308,
+            "p95_ms": 1013.604,
+            "min_ms": 979.2,
+            "max_ms": 1015.415
+          }
+        },
+        "stt": {
+          "cold": {
+            "count": 1,
+            "p50_ms": 1867.1,
+            "p95_ms": 1867.1,
+            "min_ms": 1867.1,
+            "max_ms": 1867.1
+          },
+          "warm": {
+            "count": 23,
+            "p50_ms": 719.548,
+            "p95_ms": 1075.447,
+            "min_ms": 588.824,
+            "max_ms": 1104.666
+          }
+        },
+        "command_routing": {
+          "warm": {
+            "count": 256,
+            "p50_ms": 0.003,
+            "p95_ms": 0.004,
+            "min_ms": 0.002,
+            "max_ms": 0.049
+          }
+        },
+        "llm_first_token": {},
+        "tts": {}
+      },
+      "cases": [
+        {
+          "reference": "Открой блокнот",
+          "condition": "clean",
+          "repeat": 0,
+          "transcript": "открой блокнот",
+          "error": "",
+          "ms": 1867.1,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Открой блокнот",
+          "condition": "noise",
+          "repeat": 0,
+          "transcript": "открой блокнот",
+          "error": "",
+          "ms": 712.393,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Сделай громкость тридцать процентов",
+          "condition": "clean",
+          "repeat": 0,
+          "transcript": "сделай громкость тридцать процентов",
+          "error": "",
+          "ms": 1084.867,
+          "word_errors": 0,
+          "reference_words": 4,
+          "exact": true
+        },
+        {
+          "reference": "Сделай громкость тридцать процентов",
+          "condition": "noise",
+          "repeat": 0,
+          "transcript": "сделай громкость тридцать процентов",
+          "error": "",
+          "ms": 990.669,
+          "word_errors": 0,
+          "reference_words": 4,
+          "exact": true
+        },
+        {
+          "reference": "Прочитай перевод",
+          "condition": "clean",
+          "repeat": 0,
+          "transcript": "прочитай перевод",
+          "error": "",
+          "ms": 631.932,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Прочитай перевод",
+          "condition": "noise",
+          "repeat": 0,
+          "transcript": "прочитай перевод",
+          "error": "",
+          "ms": 707.662,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Который час",
+          "condition": "clean",
+          "repeat": 0,
+          "transcript": "который час",
+          "error": "",
+          "ms": 648.637,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Который час",
+          "condition": "noise",
+          "repeat": 0,
+          "transcript": "который час",
+          "error": "",
+          "ms": 588.824,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Да да повтори повтори",
+          "condition": "clean",
+          "repeat": 0,
+          "transcript": "да да повтори повтори",
+          "error": "",
+          "ms": 636.826,
+          "word_errors": 0,
+          "reference_words": 4,
+          "exact": true
+        },
+        {
+          "reference": "Да да повтори повтори",
+          "condition": "noise",
+          "repeat": 0,
+          "transcript": "да да повтори повтори",
+          "error": "",
+          "ms": 894.818,
+          "word_errors": 0,
+          "reference_words": 4,
+          "exact": true
+        },
+        {
+          "reference": "Переведи область экрана",
+          "condition": "clean",
+          "repeat": 0,
+          "transcript": "переведи области экрана",
+          "error": "",
+          "ms": 707.038,
+          "word_errors": 1,
+          "reference_words": 3,
+          "exact": false
+        },
+        {
+          "reference": "Переведи область экрана",
+          "condition": "noise",
+          "repeat": 0,
+          "transcript": "переведи области экрана",
+          "error": "",
+          "ms": 722.99,
+          "word_errors": 1,
+          "reference_words": 3,
+          "exact": false
+        },
+        {
+          "reference": "Открой блокнот",
+          "condition": "clean",
+          "repeat": 1,
+          "transcript": "открой блокнот",
+          "error": "",
+          "ms": 628.163,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Открой блокнот",
+          "condition": "noise",
+          "repeat": 1,
+          "transcript": "открой блокнот",
+          "error": "",
+          "ms": 695.021,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Сделай громкость тридцать процентов",
+          "condition": "clean",
+          "repeat": 1,
+          "transcript": "сделай громкость тридцать процентов",
+          "error": "",
+          "ms": 931.137,
+          "word_errors": 0,
+          "reference_words": 4,
+          "exact": true
+        },
+        {
+          "reference": "Сделай громкость тридцать процентов",
+          "condition": "noise",
+          "repeat": 1,
+          "transcript": "сделай громкость тридцать процентов",
+          "error": "",
+          "ms": 1104.666,
+          "word_errors": 0,
+          "reference_words": 4,
+          "exact": true
+        },
+        {
+          "reference": "Прочитай перевод",
+          "condition": "clean",
+          "repeat": 1,
+          "transcript": "прочитай перевод",
+          "error": "",
+          "ms": 838.176,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Прочитай перевод",
+          "condition": "noise",
+          "repeat": 1,
+          "transcript": "прочитай перевод",
+          "error": "",
+          "ms": 940.62,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Который час",
+          "condition": "clean",
+          "repeat": 1,
+          "transcript": "который час",
+          "error": "",
+          "ms": 661.812,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Который час",
+          "condition": "noise",
+          "repeat": 1,
+          "transcript": "который час",
+          "error": "",
+          "ms": 719.548,
+          "word_errors": 0,
+          "reference_words": 2,
+          "exact": true
+        },
+        {
+          "reference": "Да да повтори повтори",
+          "condition": "clean",
+          "repeat": 1,
+          "transcript": "да да повтори повтори",
+          "error": "",
+          "ms": 656.118,
+          "word_errors": 0,
+          "reference_words": 4,
+          "exact": true
+        },
+        {
+          "reference": "Да да повтори повтори",
+          "condition": "noise",
+          "repeat": 1,
+          "transcript": "да да повтори повтори",
+          "error": "",
+          "ms": 936.218,
+          "word_errors": 0,
+          "reference_words": 4,
+          "exact": true
+        },
+        {
+          "reference": "Переведи область экрана",
+          "condition": "clean",
+          "repeat": 1,
+          "transcript": "переведи области экрана",
+          "error": "",
+          "ms": 751.626,
+          "word_errors": 1,
+          "reference_words": 3,
+          "exact": false
+        },
+        {
+          "reference": "Переведи область экрана",
+          "condition": "noise",
+          "repeat": 1,
+          "transcript": "переведи области экрана",
+          "error": "",
+          "ms": 907.926,
+          "word_errors": 1,
+          "reference_words": 3,
+          "exact": false
+        }
+      ],
+      "wer": 0.058823529411764705,
+      "exact_rate": 0.8333333333333334,
+      "errors": 0,
+      "peak_rss_mib": 320.14,
+      "cpu_percent_one_core": 98.43
+    }
+  }
+}

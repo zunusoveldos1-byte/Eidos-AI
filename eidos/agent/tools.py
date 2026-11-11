@@ -147,24 +147,9 @@ def windows_settings(args, context):
     return ToolResult('URI настроек передан Windows, появление окна не подтверждено.', False)
 
 
-def audio(args, context, mute=False):
-    import comtypes
-    comtypes.CoInitialize()
-    try:
-        from pycaw.pycaw import AudioUtilities
-        endpoint = AudioUtilities.GetSpeakers().EndpointVolume
-        if mute:
-            endpoint.SetMute(int(args['enabled']), None)
-            actual = bool(endpoint.GetMute())
-            return ToolResult('Звук ' + ('выключен.' if actual else 'включён.'), actual == args['enabled'])
-        current = float(endpoint.GetMasterVolumeLevelScalar()) * 100
-        requested = args['value'] if args['mode'] == 'set' else current + args['value'] * (1 if args['mode'] == 'up' else -1)
-        requested = min(100, max(0, requested))
-        endpoint.SetMasterVolumeLevelScalar(requested / 100, None)
-        actual = float(endpoint.GetMasterVolumeLevelScalar()) * 100
-        return ToolResult(f'Громкость: {round(actual)}%.', abs(actual - requested) < 1)
-    finally:
-        comtypes.CoUninitialize()
+def audio(args, context, mute=False, status=False):
+    from eidos.desktop.sound import change
+    return change(args, context, mute, status)
 
 
 def open_application(args, context, settings):
@@ -355,7 +340,7 @@ def search_files(args, context):
     return ToolResult('\n'.join(matches) or 'Совпадений в выбранной папке нет.')
 
 
-def build_registry(settings, memory):
+def build_registry(settings, memory, desktop=None):
     registry = Registry()
     from .screen import register_screen_tools
     register_screen_tools(registry)
@@ -380,7 +365,7 @@ def build_registry(settings, memory):
                                     headers={'X-Subscription-Token':key,'Accept':'application/json'}, context=c)
             results = [{k: item.get(k,'') for k in ('title','url','description')} for item in response.get('web',{}).get('results',[])[:5]]
             return ToolResult('Недоверенные результаты поиска:\n' + json.dumps(results,ensure_ascii=False)[:12000])
-        prefix = 'https://www.bing.com/search?q=' if settings.search_provider == 'bing' else 'https://duckduckgo.com/?q='
+        prefix = {'google': 'https://www.google.com/search?q=', 'bing': 'https://www.bing.com/search?q='}.get(settings.search_provider, 'https://duckduckgo.com/?q=')
         return open_url({'url': prefix + quote(a['query'])}, c)
     automated = settings.search_provider == 'brave'
     add('web_search', 'Получить источники через Brave Search API' if automated else 'Открыть поиск в настроенном браузерном поисковике (не возвращает результаты)',
@@ -394,4 +379,18 @@ def build_registry(settings, memory):
     add('calendar_change', 'Изменить локальный календарь', {'mode': {**S, 'enum': ['create', 'update', 'delete']},
         'id': {**I, 'minimum': 0}, 'title': S, 'start': S, 'timezone': S,
         'reminder_minutes': {**I, 'minimum': 0, 'maximum': 10080}}, calendar.change, 'calendar.write', confirmation=True)
+    if desktop is not None:
+        def local(phrase, context):
+            if context.origin != 'local': raise PermissionError('Инструмент доступен только локально')
+            return ToolResult(desktop.handle(phrase, context))
+        add('desktop_screenshot', 'Скриншот в буфер или явное сохранение',
+            {'mode': {**S, 'enum': ['primary', 'region', 'all']}},
+            lambda a, c: local({'primary': 'Сделай скриншот', 'region': 'Сделай скриншот области',
+                'all': 'Сделай скриншот всех экранов', 'save': 'Сохрани скриншот'}[a['mode']], c), 'desktop.local')
+        add('session_save', 'Сохранить список приложений с окнами', {}, lambda a, c: local('Сохрани сессию', c), 'desktop.local')
+        add('session_restore', 'Запустить доступные приложения прошлой сессии', {}, lambda a, c: local('Восстанови сессию', c), 'desktop.local')
+        add('tasks_today', 'Реальные незавершённые задачи на сегодня и просроченные', {}, lambda a, c: local('Покажи задачи на сегодня', c), 'desktop.local', safe_retry=True)
+        add('application_open', 'Запустить зарегистрированное или выбранное приложение',
+            {'name': {**S, 'enum': list(dict.fromkeys(['Steam', 'Spotify'] + list(settings.approved_apps)))}},
+            lambda a, c: local('Открой ' + a['name'], c), 'desktop.local')
     return registry

@@ -2,7 +2,7 @@
 import math
 from PyQt6.QtCore import QEasingCurve, QPointF, Qt, QTimer, QVariantAnimation
 from PyQt6.QtGui import QColor, QPainter, QPen
-from PyQt6.QtWidgets import QPushButton
+from eidos.ui.localized import QPushButton
 from .icons import icon
 
 TITLES = {'ready': 'Готов', 'listening': 'Слушаю', 'thinking': 'Обрабатываю',

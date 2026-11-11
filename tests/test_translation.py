@@ -133,7 +133,7 @@ def test_overlay_covers_only_text_and_passes_clicks(app):
     assert overlay.geometry().x() == -400
     assert overlay.windowFlags() & Qt.WindowType.WindowTransparentForInput
     assert rendered.pixelColor(190, 70).alpha() == 0
-    assert rendered.pixelColor(10, 10).alpha() == 255
+    assert 0 < rendered.pixelColor(10, 10).alpha() < 255
     overlay.close()
 
 

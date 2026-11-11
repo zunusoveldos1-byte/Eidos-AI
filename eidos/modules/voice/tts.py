@@ -1,50 +1,57 @@
-"""Online synthesis in worker-owned asyncio loop; only temporary MP3 files."""
-
+"""Worker-side synthesis to memory. No audio files or FFmpeg."""
 import asyncio
-import os
-from pathlib import Path
 from threading import Event
-import tempfile
+from .pcm import PCMAudio
 
 
 class EdgeTTS:
     TIMEOUT = 45
+    MAX_ENCODED_BYTES = 16 * 1024 * 1024
 
     def synthesize(self, text: str, voice: str, cancel: Event, *,
-                   rate: int = 0, volume: int = 100) -> Path | None:
+                   rate: int = 0, volume: int = 100) -> PCMAudio | None:
         if cancel.is_set():
             return None
-        fd, name = tempfile.mkstemp(prefix='eidos-', suffix='.mp3')
-        os.close(fd)
-        path = Path(name)
-        try:
-            operation = (self._save(text, voice, path, cancel) if rate == 0 and volume == 100
-                         else self._save(text, voice, path, cancel, rate, volume))
-            completed = asyncio.run(operation)
-            if not completed or cancel.is_set():
-                path.unlink(missing_ok=True)
-                return None
-            return path
-        except BaseException:
-            path.unlink(missing_ok=True)
-            raise
+        from eidos.agent.memory import require_public_text
+        require_public_text(text)
+        data = asyncio.run(self._collect(text, voice, cancel, rate, volume))
+        if not data or cancel.is_set():
+            return None
+        audio = self._decode(data)
+        return None if cancel.is_set() else audio
 
-    async def _save(self, text: str, voice: str, path: Path, cancel: Event,
-                    rate: int = 0, volume: int = 100) -> bool:
+    @staticmethod
+    def _decode(data: bytes) -> PCMAudio:
+        import miniaudio
+        # Edge's wire protocol is compressed. Native miniaudio decodes bytes,
+        # without FFmpeg, a pathname or a temporary container file.
+        decoded = miniaudio.decode(data, output_format=miniaudio.SampleFormat.SIGNED16,
+                                   nchannels=1, sample_rate=16000)
+        return PCMAudio(decoded.samples.tobytes())
+
+    async def _collect(self, text, voice, cancel, rate=0, volume=100):
         import edge_tts
-
         rate = max(-50, min(100, int(rate)))
         volume = max(0, min(100, int(volume)))
-        task = asyncio.create_task(edge_tts.Communicate(
-            text, voice, rate=f'{rate:+d}%', volume=f'{volume - 100:+d}%').save(str(path)))
+        async def collect():
+            data = bytearray()
+            async for chunk in edge_tts.Communicate(text, voice, rate=f'{rate:+d}%',
+                                                   volume=f'{volume - 100:+d}%').stream():
+                if cancel.is_set():
+                    return None
+                if chunk['type'] == 'audio':
+                    if len(data) + len(chunk['data']) > self.MAX_ENCODED_BYTES:
+                        raise ValueError('Ответ озвучки превышает допустимый размер.')
+                    data.extend(chunk['data'])
+            return bytes(data)
+        task = asyncio.create_task(collect())
         try:
             async with asyncio.timeout(self.TIMEOUT):
                 while not task.done():
                     if cancel.is_set():
-                        return False
-                    await asyncio.wait({task}, timeout=0.1)
-                await task
-                return True
+                        return None
+                    await asyncio.wait({task}, timeout=.05)
+                return await task
         finally:
             if not task.done():
                 task.cancel()
@@ -69,7 +76,7 @@ class SapiTTS:
             comtypes.CoUninitialize()
 
     def synthesize(self, text: str, voice: str, cancel: Event, *,
-                   rate: int = 0, volume: int = 100) -> Path | None:
+                   rate: int = 0, volume: int = 100) -> PCMAudio | None:
         import time
         if cancel.is_set():
             return None
@@ -78,9 +85,6 @@ class SapiTTS:
             from comtypes.client import CreateObject
         except ImportError as exc:
             raise RuntimeError('Для локальной речи Windows установите comtypes.') from exc
-        fd, name = tempfile.mkstemp(prefix='eidos-', suffix='.wav')
-        os.close(fd)
-        path = Path(name)
         speaker = stream = voices = None
         initialized = False
         complete = False
@@ -106,8 +110,8 @@ class SapiTTS:
                 speaker.Voice = selected
             speaker.Rate = max(-10, min(10, round(int(rate) / 10)))
             speaker.Volume = max(0, min(100, int(volume)))
-            stream = CreateObject('SAPI.SpFileStream', dynamic=True)
-            stream.Open(str(path), 3, False)  # SSFMCreateForWrite
+            stream = CreateObject('SAPI.SpMemoryStream', dynamic=True)
+            stream.Format.Type = 18  # SAFT16kHz16BitMono
             speaker.AudioOutputStream = stream
             speaker.Speak(text, 1)  # SVSFlagsAsync: cancellation remains responsive.
             deadline = time.monotonic() + self.TIMEOUT
@@ -119,14 +123,9 @@ class SapiTTS:
                     speaker.Speak('', 3)
                     raise TimeoutError('Превышено время синтеза SAPI.')
             complete = not cancel.is_set()
+            audio = PCMAudio(bytes(stream.GetData())) if complete else None
         finally:
-            try:
-                if stream is not None:
-                    stream.Close()
-            finally:
-                speaker = stream = voices = None
-                if initialized:
-                    comtypes.CoUninitialize()
-                if not complete:
-                    path.unlink(missing_ok=True)
-        return path if complete else None
+            speaker = stream = voices = None
+            if initialized:
+                comtypes.CoUninitialize()
+        return audio if complete else None

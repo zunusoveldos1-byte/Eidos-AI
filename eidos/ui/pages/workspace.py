@@ -1,5 +1,5 @@
 """Reparent existing forms instead of cloning controls or controllers."""
-from PyQt6.QtWidgets import QLabel, QTabWidget
+from eidos.ui.localized import QLabel, QTabWidget
 from ..components import Page, ResponsiveRow, button, label
 
 
@@ -14,7 +14,6 @@ class SectionPage(Page):
 def reorganize(window):
     ui, settings, voice = window.assistant, window.settings, window.voice
     window.tools = SectionPage('Инструменты', 'Доступные действия, документы и локальный календарь')
-    window.memory = SectionPage('Память', 'Ваш профиль и сведения, которые вы разрешили сохранять')
     settings.tabs = QTabWidget()
     settings.tabs.setUsesScrollButtons(True)
     settings.tabs.addTab(settings.general_page, 'Общие')
@@ -27,19 +26,26 @@ def reorganize(window):
     settings.tabs.currentChanged.connect(lambda index: settings.footer.setVisible(index == 0))
     settings.feedback.hide()
     settings.feedback = ui.feedback
-    destinations = {'Память': window.memory.tabs, 'Профиль': window.memory.tabs,
-                    'Календарь': window.tools.tabs, 'Skills': window.tools.tabs,
+    destinations = {'Календарь': window.tools.tabs, 'Skills': window.tools.tabs,
                     'Модель': settings.tabs, 'Подключения': settings.tabs}
     for name, target in destinations.items():
         page = ui.sections[name]
         ui.tabs.removeTab(ui.tabs.indexOf(page))
         target.addTab(page, 'Возможности' if name == 'Skills' else name)
+    for name in ('Память', 'Профиль'):
+        page = ui.sections[name]
+        ui.tabs.removeTab(ui.tabs.indexOf(page))
+        page.setParent(ui)
+        page.hide()
     ui.tabs.tabBar().hide()
-    for item_index in (0, 1):
-        ui.sections['Диалог'].header.itemAt(0).layout().itemAt(item_index).widget().hide()
     documents = Page('Документы', 'Доступ только к выбранным файлам и рабочей папке')
-    documents.body.addWidget(label('Приложите файл в «Диалоге», затем прочитайте его здесь. Для создания выберите рабочую папку; содержимое берётся из поля вашего запроса.', 'secondary'))
+    documents.body.addWidget(label('Выберите документы или рабочую папку. Доступ ограничен вашим выбором; запись требует подтверждения.', 'secondary'))
+    documents.body.addWidget(ResponsiveRow([ui.select_files, ui.select_folder, ui.forget_files], threshold=600))
+    documents.body.addWidget(ui.grants)
     documents.body.addWidget(ResponsiveRow([ui.document_read_button, ui.document_write_button], threshold=600))
+    ui.history.setPlaceholderText('Результат чтения документа или выполнения инструмента')
+    documents.body.addWidget(ui.history)
+    documents.body.addWidget(ui.stop)
     documents.body.addStretch()
     window.tools.tabs.insertTab(0, documents, 'Документы')
     quick = Page('Windows и браузер', 'Операции выполняет общий агент')
@@ -49,11 +55,29 @@ def reorganize(window):
         control = button(name)
         control.clicked.connect(lambda checked=False, t=tool, a=args: window._start_agent_task('tool', (t, a)))
         quick.body.addWidget(control)
-    quick.body.addWidget(label('Поиск и чтение публичных страниц доступны через диалог. Подключения и модель настраиваются в «Настройках».', 'muted'))
+    quick.body.addWidget(label('Команды также доступны голосом. Подключения и модель настраиваются в «Настройках».', 'muted'))
+    screenshot_folder = button('Папка скриншотов')
+    def choose_screenshot_folder():
+        from PyQt6.QtWidgets import QFileDialog
+        from dataclasses import replace
+        path = QFileDialog.getExistingDirectory(window, 'Папка скриншотов', window.agent_service.settings.screenshot_folder)
+        if path:
+            window.agent_service.save_settings(replace(window.agent_service.settings, screenshot_folder=path))
+            ui.feedback.setText('Папка скриншотов сохранена.')
+    screenshot_folder.clicked.connect(choose_screenshot_folder)
+    quick.body.addWidget(screenshot_folder)
+    quick.body.addWidget(ui.input)
+    ui.input.show()
+    execute_command = button('Выполнить команду', 'send', True)
+    execute_command.clicked.connect(lambda: window._start_agent_task('chat', ui.input.toPlainText()))
+    quick.body.addWidget(execute_command)
+    from .assistant import text_area
+    window.command_output = text_area(160, True)
+    window.command_output.setAccessibleName('Ответ на системную команду')
+    quick.body.addWidget(window.command_output)
     quick.body.addStretch()
     window.tools.tabs.insertTab(0, quick, 'Windows и браузер')
     window.tools.tabs.setCurrentIndex(0)
-    window.memory.tabs.setCurrentIndex(0)
     memory_page = ui.sections['Память']
     ui.memory_new.setText('Добавить запись')
     ui.memory_new.setObjectName('primary')
@@ -70,11 +94,7 @@ def reorganize(window):
     activation.body.addWidget(settings.wake_card)
     voice.config_tabs.addTab(voice_parameters, 'Устройство и голос')
     voice.config_tabs.addTab(activation, 'Активация голосом')
-    voice.settings_button.setText('Устройство, голос и активация')
-    voice.settings_button.toggled.disconnect()
-    voice.settings_button.toggled.connect(voice.config_tabs.setVisible)
-    voice.config_tabs.hide()
-    voice.body.insertWidget(voice.body.indexOf(voice.settings_button) + 1, voice.config_tabs)
+    settings.tabs.addTab(voice.config_tabs, 'Голос')
     for name in ('tts_voice', 'tts_provider', 'sapi_voice', 'tts_rate', 'tts_volume'):
         setattr(voice, name, getattr(settings, name))
     save_voice = button('Сохранить параметры голоса', primary=True)
@@ -87,6 +107,10 @@ def reorganize(window):
     settings.speak_row.hide()
     settings.microphone = voice.microphone
     settings.speak = voice.speak
-    window.memory.tabs.widget(1).body.insertWidget(0, settings.profile_row)
-    window.memory.tabs.widget(1).body.insertWidget(1, settings.profile_buttons)
+    voice.storage.setParent(ui)
+    voice.storage.hide()
+    settings.profile_row.hide()
+    settings.profile_buttons.hide()
     ui.profile.memory.hide()
+    from .settings_layout import rebuild
+    rebuild(window)

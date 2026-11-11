@@ -23,6 +23,7 @@ class RingCapture:
         self.triggered = self.done = False
         self._post = self._silence = 0
         self._noise = .002
+        self.speaking = False
 
     @property
     def buffered_samples(self):
@@ -58,6 +59,7 @@ class RingCapture:
         self._post += frame.size
         rms = float(np.sqrt(np.mean(frame ** 2)))
         threshold = max(self.threshold, self._noise * 2.2)
+        self.speaking = rms >= threshold
         self._silence = self._silence + frame.size if rms < threshold else 0
         # Give a user who pauses after the name time to start the command.
         self.done = self._count >= self.limit or (self._post >= self.sample_rate and
@@ -72,6 +74,7 @@ class _WakeThread(QThread):
     detected = pyqtSignal()
     captured = pyqtSignal(object, str)
     level = pyqtSignal(float)
+    speech_activity = pyqtSignal(float, bool)
     status = pyqtSignal(str)
     failed = pyqtSignal()
     microphone_changed = pyqtSignal(str, str)
@@ -116,17 +119,24 @@ class _WakeThread(QThread):
                     break
                 samples = array('h', pcm)
                 now = time.monotonic()
-                if now >= next_level:
-                    self.level.emit(min(1., (sum(value * value for value in samples) /
-                                             max(1, len(samples))) ** .5 / 32768))
+                send_level = now >= next_level
+                if send_level:
+                    rms = min(1., (sum(value * value for value in samples) / max(1, len(samples))) ** .5 / 32768)
+                    self.level.emit(rms)
                     next_level = now + .1
                 import numpy as np
-                found = not capture.triggered and engine.process(samples) >= 0
+                found = False
+                if not capture.triggered:
+                    from eidos.core.metrics import METRICS
+                    with METRICS.measure('wake_detection'):
+                        found = engine.process(samples) >= 0
                 capture.feed(np.asarray(samples, dtype=np.float32) / 32768., found)
                 if found:
                     self.microphone_changed.emit('recording', '')
                     self.detected.emit()
                     self.status.emit('Слушаю команду после «Эйдос»…')
+                if send_level:
+                    self.speech_activity.emit(rms, capture.speaking)
                 if capture.done or (capture.triggered and self.submit.is_set()):
                     from .recorder import resample
                     self.captured.emit(resample(capture.audio(), engine.sample_rate), uuid4().hex)
@@ -157,6 +167,7 @@ class WakeController(QObject):
     activated = pyqtSignal()
     command_ready = pyqtSignal(object, str)
     level = pyqtSignal(float)
+    speech_activity = pyqtSignal(float, bool)
     status = pyqtSignal(str)
     stopped = pyqtSignal()
     microphone_changed = pyqtSignal(str, str)
@@ -243,6 +254,7 @@ class WakeController(QObject):
         thread.status.connect(self.status)
         thread.failed.connect(self._failure)
         thread.microphone_changed.connect(self._microphone_changed)
+        thread.speech_activity.connect(self.speech_activity)
         thread.finished.connect(self._finished)
         thread.start()
 

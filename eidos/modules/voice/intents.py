@@ -4,6 +4,12 @@ import re
 RETRY_SPEECH = 'Не удалось разобрать речь. Подойдите ближе к микрофону и повторите'
 
 
+def stop_input_intent(text):
+    text = strip_wake_prefix(text)
+    normalized = ' '.join(re.sub(r'[^\w\s]', ' ', text.lower().replace('ё', 'е')).split())
+    return normalized in {'отключайся', 'выключайся', 'стоп', 'отключи микрофон', 'выключи микрофон'}
+
+
 def strip_wake_prefix(text: str) -> str:
     return re.sub(r'^\s*(?:эй\s*д[оуа]с|эйдос|ейдос|эйдус|эйдоз|эдос|айдос|eidos|aidos)\b[\s,.:!—-]*',
                   '', text, count=1, flags=re.IGNORECASE).strip()

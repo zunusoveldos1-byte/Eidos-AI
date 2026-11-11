@@ -1,0 +1,11 @@
+{
+  "sapi_pcm_bytes": 66560,
+  "sample_rate": 16000,
+  "channels": 1,
+  "silero_frame_mean_ms": 0.296,
+  "native_pcm_finished": true,
+  "errors": [],
+  "vosk_text": "проверка речи",
+  "vosk_whole_phrase_processing_ms": 495.16,
+  "silero_speech_detected": true
+}

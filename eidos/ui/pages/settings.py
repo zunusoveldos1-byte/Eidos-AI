@@ -1,6 +1,7 @@
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QKeySequence
-from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget, QKeySequenceEdit, QSpinBox, QDoubleSpinBox, QLineEdit
+from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QKeySequenceEdit
+from eidos.ui.localized import QWidget, QSpinBox, QDoubleSpinBox, QLineEdit
 from eidos.core.config import AppConfig, MODELS
 from ..components import Card, Page, ResponsiveRow, Toggle, button, combo, label, setting_row
 
@@ -22,16 +23,16 @@ class SettingsPage(Page):
         self.body = self.general_page.body
         general = Card()
         general.heading('Общие', 'settings')
-        startup = Toggle('Запускать вместе с Windows — пока недоступно')
-        startup.setEnabled(False)
-        general.body.addWidget(setting_row('Запускать с Windows (скоро)', startup))
+        self.startup = Toggle('Запускать вместе с Windows')
+        general.body.addWidget(setting_row('Запускать вместе с Windows', self.startup))
+        self.startup_status = label('', 'muted')
+        general.body.addWidget(self.startup_status)
         self.on_top = Toggle('Поверх других окон')
         general.body.addWidget(setting_row('Поверх других окон', self.on_top))
-        language = combo()
-        language.addItem('Русский')
-        language.setEnabled(False)
-        language.setToolTip('В MVP поддерживается только русский интерфейс')
-        general.body.addWidget(setting_row('Язык интерфейса', language))
+        self.language = combo()
+        for code, title in [('ru', 'Русский'), ('en', 'English'), ('ky', 'кыргызча'), ('uz', 'o‘zbekcha'), ('kk', 'қазақша')]:
+            self.language.addRawItem(title, code)
+        general.body.addWidget(setting_row('Язык интерфейса', self.language))
         self.profile = combo()
         self.profile.setEditable(True)
         self.profile_row = setting_row('Текущий профиль', self.profile)
@@ -45,7 +46,8 @@ class SettingsPage(Page):
         self.onboarding_button = button('Заполнить опрос снова')
         self.onboarding_button.clicked.connect(self.onboarding_requested)
         profile_buttons_layout.addWidget(self.onboarding_button)
-        general.body.addWidget(label('Профиль хранит предпочтения и память. Вы выбираете его вручную.', 'muted'))
+        self.mascot_visible = Toggle('Показывать мини-персонажа')
+        general.body.addWidget(setting_row('Показывать мини-персонажа', self.mascot_visible))
         self.character_button = button('Показать персонажа', 'user')
         general.body.addWidget(self.character_button)
         self.processing_info = label('Обработка: OCR и Whisper — локально. Озвучка Edge и перевод Google отправляют только текст. SAPI работает локально.', 'muted')
@@ -157,10 +159,24 @@ class SettingsPage(Page):
         self.body.addWidget(self.extra_settings)
         recognition = Card()
         recognition.heading('Распознавание', 'wave')
+        self.stt_engine = combo()
+        self.stt_engine.addItem('Faster-Whisper', 'whisper')
+        self.stt_engine.addItem('Vosk — потоковый локальный', 'vosk')
+        recognition.body.addWidget(setting_row('Движок распознавания', self.stt_engine))
+        self.vosk_model_path = QLineEdit()
+        self.vosk_model_path.setPlaceholderText('Каталог распакованной модели Vosk')
+        self.vosk_row = setting_row('Локальная модель Vosk', self.vosk_model_path)
+        recognition.body.addWidget(self.vosk_row)
+        self.vosk_select = button('Выбрать папку')
+        recognition.body.addWidget(self.vosk_select)
+        self.vosk_select.clicked.connect(self._choose_vosk_model)
         self.model = combo()
         self.model.addItems(MODELS)
-        recognition.body.addWidget(setting_row('Модель', self.model))
-        recognition.body.addWidget(label('Работает локально после загрузки', 'muted'))
+        self.whisper_row = setting_row('Модель', self.model)
+        recognition.body.addWidget(self.whisper_row)
+        self.stt_engine.currentIndexChanged.connect(self._recognition_controls)
+        self._recognition_controls()
+        recognition.body.addWidget(label('Модели загружаются только из локальных файлов. Подготовьте модель перед запуском; автоматического скачивания нет.', 'muted'))
         self.voice_sensitivity = QDoubleSpinBox()
         self.voice_sensitivity.setRange(0., 1.)
         self.voice_sensitivity.setSingleStep(.05)
@@ -186,21 +202,14 @@ class SettingsPage(Page):
         recognition.body.addWidget(self.advanced)
         appearance = Card()
         appearance.heading('Внешний вид', 'monitor')
-        themes = QWidget()
-        choices = QHBoxLayout(themes)
-        choices.setContentsMargins(0, 0, 0, 0)
-        dark, light = button('Тёмная'), button('Светлая')
-        dark.setStyleSheet('border-color: #2FE09B; color: #2FE09B;')
-        dark.setToolTip('Текущая тема')
-        light.setEnabled(False)
-        light.setToolTip('Светлая тема пока не поддерживается')
-        choices.addWidget(dark)
-        choices.addWidget(light)
-        appearance.body.addWidget(setting_row('Тема приложения', themes))
-        accent = label('●  Изумрудный')
-        accent.setStyleSheet('color: #2FE09B;')
-        accent.setToolTip('В MVP используется фиксированный изумрудный акцент')
-        appearance.body.addWidget(setting_row('Акцентный цвет', accent))
+        self.theme = combo()
+        self.theme.addItem('Тёмная', 'dark')
+        self.theme.addItem('Светлая', 'light')
+        appearance.body.addWidget(setting_row('Тема приложения', self.theme))
+        self.accent_color = combo()
+        for title, color in [('Изумрудный', '#25E6A1'), ('Синий', '#458BEA'), ('Фиолетовый', '#AB7DEA'), ('Янтарный', '#E4BC76')]:
+            self.accent_color.addItem(title, color)
+        appearance.body.addWidget(setting_row('Акцентный цвет', self.accent_color))
         self.animation = Toggle('Анимации маскота')
         appearance.body.addWidget(setting_row('Анимации маскота', self.animation))
         appearance.body.addWidget(label('Спокойная короткая анимация при смене состояния', 'muted'))
@@ -224,7 +233,30 @@ class SettingsPage(Page):
         self.layout().addWidget(footer)
         self.footer = footer
 
+    def _recognition_controls(self, *args):
+        vosk = self.stt_engine.currentData() == 'vosk'
+        self.vosk_row.setVisible(vosk)
+        self.vosk_select.setVisible(vosk)
+        self.whisper_row.setVisible(not vosk)
+
+    def _choose_vosk_model(self):
+        from eidos.ui.localized import QFileDialog
+        path = QFileDialog.getExistingDirectory(self, 'Локальная модель Vosk', self.vosk_model_path.text())
+        if path:
+            self.vosk_model_path.setText(path)
+
     def load(self, config: AppConfig) -> None:
+        self.startup.setChecked(config.startup_enabled)
+        self.language.setCurrentIndex(self.language.findData(config.ui_language))
+        self.theme.setCurrentIndex(self.theme.findData(config.theme))
+        if self.accent_color.findData(config.accent_color) < 0:
+            self.accent_color.addItem(config.accent_color, config.accent_color)
+        self.accent_color.setCurrentIndex(self.accent_color.findData(config.accent_color))
+        self.mascot_visible.setChecked(not config.mascot_hidden)
+        self.stt_engine.setCurrentIndex(self.stt_engine.findData(config.stt_engine))
+        from pathlib import Path
+        prepared = Path(__file__).resolve().parents[3] / '.cache/voice-models/vosk-model-small-ru-0.22'
+        self.vosk_model_path.setText(config.vosk_model_path or (str(prepared) if (prepared / 'am/final.mdl').is_file() else ''))
         self.communication_style.setCurrentIndex(self.communication_style.findData(config.communication_style))
         self.voice_sensitivity.setValue(config.voice_sensitivity)
         self.wake_sensitivity.setValue(config.wake_sensitivity)
@@ -265,6 +297,10 @@ class SettingsPage(Page):
                   ('close_to_tray', 'start_in_tray', 'floating_enabled', 'floating_pinned', 'reduce_animations',
                    'voice_hotkey_enabled', 'voice_response_brief', 'wake_word_enabled')}
         values.update(voice_hotkey=self.voice_hotkey.keySequence().toString(QKeySequence.SequenceFormat.PortableText),
+                      startup_enabled=self.startup.isChecked(), ui_language=self.language.currentData(),
+                      theme=self.theme.currentData(), accent_color=self.accent_color.currentData(),
+                      mascot_hidden=not self.mascot_visible.isChecked(), stt_engine=self.stt_engine.currentData(),
+                      vosk_model_path=self.vosk_model_path.text().strip(),
                       communication_style=self.communication_style.currentData(),
                       voice_sensitivity=self.voice_sensitivity.value(), voice_max_seconds=self.voice_max_seconds.value(),
                       wake_sensitivity=self.wake_sensitivity.value(),
@@ -280,7 +316,7 @@ class SettingsPage(Page):
         self.sapi_voice.clear()
         self.sapi_voice.addItem('Русский голос Windows по умолчанию', '')
         for identifier, description in voices:
-            self.sapi_voice.addItem(description, identifier)
+            self.sapi_voice.addRawItem(description, identifier)
         index = self.sapi_voice.findData(selected)
         if index >= 0:
             self.sapi_voice.setCurrentIndex(index)

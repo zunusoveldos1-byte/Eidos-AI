@@ -12,6 +12,31 @@ SECONDARY = '#A9BDB5'
 ASSETS = Path(__file__).resolve().parents[1] / 'assets'
 _font_loaded = False
 
+
+def style_for(theme='dark', accent=ACCENT):
+    """Apply tokens without changing spacing, geometry or widget composition."""
+    style = STYLE.replace(ACCENT, accent).replace('#2FE09B', accent)
+    if theme == 'light':
+        from PyQt6.QtGui import QColor
+        import re
+        light = {'#081D18': '#F3F7F5', '#0D3025': '#FFFFFF', '#0B251E': '#EAF1ED',
+                 '#0D3B2C': '#DDECE4', '#F2FAF6': '#15291F', '#A9BDB5': '#486456',
+                 '#82958A': '#526D5D', '#29362F': '#C5D5CB'}
+        def declaration(match):
+            prop, value = match.group(1), match.group(2)
+            def color(token):
+                raw = token.group()
+                if raw == accent:
+                    return QColor(raw).darker(150).name() if prop == 'color' else raw
+                if prop == 'color':
+                    return light.get(raw, '#15291F')
+                if prop.startswith('border'):
+                    return '#C5D5CB'
+                return light.get(raw, '#F0F5F2' if QColor(raw).lightness() < 100 else raw)
+            return prop + ':' + re.sub(r'#[0-9A-Fa-f]{6}', color, value)
+        style = re.sub(r'(background(?:-color)?|color|border(?:-[a-z]+)?)\s*:([^;{}]+)', declaration, style)
+    return style.replace(ACCENT, accent).replace('#2FE09B', accent)
+
 def install_font() -> None:
     global _font_loaded
     if not _font_loaded:
@@ -52,7 +77,7 @@ QPushButton#primary:hover { background: #54EAAF; border-color: #54EAAF; }
 QPushButton#primary:pressed { background: #20C788; }
 QPushButton#primary:disabled { background: #1C4031; color: #628B77; border-color: #284B3B; }
 QPushButton#nav { text-align: left; background: transparent; border: 1px solid transparent; padding: 12px 16px; font-size: 15px; }
-QPushButton#nav:hover { background: #1B2821; }
+QPushButton#nav:hover, QPushButton#nav:pressed { background: transparent; }
 QPushButton#nav:checked { background: #1B3428; border-left: 3px solid #2FE09B; color: #2FE09B; font-weight: 600; }
 QPushButton#nav:focus { border: 1px solid #2FE09B; }
 QPushButton#iconButton { background: transparent; border: 1px solid transparent; padding: 4px; min-width: 22px; min-height: 22px; }
@@ -61,7 +86,7 @@ QPushButton#iconButton:focus { border-color: #2FE09B; }
 QPushButton#chip { background: #1B3428; border: none; border-radius: 17px; padding: 7px 18px; font-size: 12px; }
 QPushButton#chip:hover { background: #284D3B; }
 QPushButton#details { text-align: left; background: transparent; border: none; padding: 5px; color: #A8B7AE; }
-QComboBox { background: #151E18; border: 1px solid #35453C; border-radius: 8px; padding: 10px 30px 10px 12px; min-height: 20px; }
+QComboBox { background: #0F1714; border: 1px solid #35453C; border-radius: 8px; padding: 10px 30px 10px 12px; min-height: 20px; }
 QComboBox:hover { border-color: #577A64; }
 QComboBox:disabled { color: #788B80; background: #171F1A; border-color: #29362F; }
 QComboBox::drop-down { border: none; width: 28px; }
@@ -78,11 +103,11 @@ QToolTip { background: #22372B; color: #F2F6F3; border: 1px solid #456753; paddi
 QMessageBox { background: #151B18; }
 QLineEdit, QSpinBox, QDoubleSpinBox, QDateTimeEdit { background: #19211C; color: #F2F6F3; border: 1px solid #35453C; border-radius: 8px; padding: 9px; }
 QLineEdit:focus, QPlainTextEdit:focus { border-color: #2FE09B; }
-QListWidget { background: #151E18; border: 1px solid #35453C; border-radius: 8px; padding: 8px; }
+QListWidget { background: #0F1714; border: 1px solid #35453C; border-radius: 8px; padding: 8px; }
 QListWidget::item { padding: 8px; }
 QListWidget::item:selected { background: #1B3428; color: #2FE09B; }
 QTabWidget::pane { border: 1px solid #29362F; border-radius: 10px; }
-QTabBar::tab { background: #151E18; color: #A8B7AE; padding: 11px 14px; }
+QTabBar::tab { background: #0F1714; color: #A8B7AE; padding: 11px 14px; }
 QTabBar::tab:selected { background: #1B3428; color: #2FE09B; border-bottom: 2px solid #2FE09B; }
 QCheckBox { spacing: 9px; }
 QDialog { background: #101713; }
@@ -99,16 +124,23 @@ QPushButton#menuToggle { background: #0D3025; border: 1px solid #25E6A1; padding
 QPushButton#menuToggle:hover { background: #0D3B2C; border-color: #25E6A1; }
 QPushButton#menuToggle:pressed { background: #0B251E; }
 QPushButton#nav:checked { background: #0D3B2C; border: 1px solid #25E6A1; color: #25E6A1; border-radius: 13px; }
-QFrame#homeComposer { background: rgba(13,48,37,190); border: 1px solid #3FBA91; border-radius: 22px; }
-QLineEdit#homeInput { background: transparent; border: none; font-size: 21px; padding: 8px; }
-QLineEdit#homeInput:focus { border: none; }
-QPushButton#homeMic { background: #0D3B2C; border: 1px solid #237D5D; border-radius: 26px; padding: 8px; }
-QPushButton#homeMic:hover { background: #145039; border-color: #25E6A1; }
-QPushButton#homeMic:pressed { background: #0D3025; }
 QLabel#homeStatus { color: #25E6A1; background: rgba(13,59,44,190); border: 1px solid #1C664A; border-radius: 18px; padding: 9px 15px; font-size: 13px; }
 QPushButton#cameraStatus { color: #A9BDB5; background: #0D3025; border: 1px solid #275646; border-radius: 17px; font-size: 12px; padding: 7px 15px; }
 QPushButton#homeAction { min-height: 106px; max-height: 106px; padding: 0; background: transparent; border: none; }
 QMenu { background: #0D3025; color: #F2FAF6; border: 1px solid #285343; padding: 6px; }
 QMenu::item { padding: 10px 18px; }
 QMenu::item:selected { background: #0D3B2C; color: #25E6A1; }
+'''
+STYLE += '''
+QComboBox, QLineEdit, QSpinBox, QDoubleSpinBox, QKeySequenceEdit {
+    background: #0F1714; border: 1px solid #1E2923; border-radius: 8px;
+}
+QComboBox:hover, QLineEdit:hover, QSpinBox:hover, QDoubleSpinBox:hover {
+    border-color: #10B981;
+}
+QComboBox QAbstractItemView {
+    background: #0B110F; color: #F2FAF6; border: 1px solid #1E2923;
+    selection-background-color: #164A35; selection-color: #F2FAF6;
+}
+QFrame#card { background: #0F1714; border: 1px solid #1E2923; }
 '''

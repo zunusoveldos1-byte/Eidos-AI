@@ -17,30 +17,26 @@ def isolated_credentials(monkeypatch):
     monkeypatch.setattr('eidos.agent.secrets.SecretStore.get', lambda *a: None)
 
 
-def test_pause_keeps_source_position_and_stop_releases_file(app, tmp_path):
+def test_pause_keeps_source_position_and_stop_releases_memory(app, tmp_path):
     from eidos.modules.voice.playback import AudioPlayback
-    from PyQt6.QtCore import QUrl
-    class Player:
-        def __init__(self):
-            self.position = 1250
-            self.calls = []
-        def pause(self): self.calls.append('pause')
-        def play(self): self.calls.append('play')
+    from eidos.modules.voice.pcm import PCMAudio
+    class Sink:
+        def __init__(self): self.calls = []; self.position = 1250
+        def suspend(self): self.calls.append('pause')
+        def resume(self): self.calls.append('play')
         def stop(self): self.calls.append('stop')
-        def setSource(self, source): self.calls.append(source)
+        def deleteLater(self): pass
     playback = AudioPlayback()
-    playback._player = Player()
-    path = tmp_path / 'speech.wav'
-    path.touch()
-    playback._path = path
+    sink = playback._output = Sink()
+    playback._audio = PCMAudio(bytes(1024))
     playback.pause()
-    assert playback.active and playback.paused and path.exists()
+    assert playback.active and playback.paused
     playback.resume()
-    assert not playback.paused and playback._player.position == 1250
-    assert playback._player.calls == ['pause', 'play']
+    assert not playback.paused and sink.position == 1250
+    assert sink.calls == ['pause', 'play']
     playback.stop()
-    assert not playback.active and not playback.paused and not path.exists()
-    assert playback._player.calls[-1] == QUrl()
+    assert not playback.active and playback._audio is None
+    assert sink.calls[-1] == 'stop'
 
 
 @pytest.mark.parametrize('phrase,expected', [
@@ -209,17 +205,21 @@ def test_configured_120_seconds_is_not_reduced_to_30(monkeypatch):
         def __init__(self, **kw): self.callback = kw['callback']
         def start(self):
             # A alternating waveform avoids DC-only test audio.
-            frame = np.tile(np.array([.1, -.1], dtype=np.float32), 8000).reshape(-1, 1)
-            for _ in range(40): self.callback(frame, 16000, None, False)
+            frame = np.tile(np.array([3276, -3276], dtype='<i2'), 16384).tobytes()
+            for _ in range(20): self.callback(frame, 32768, None, False)
             stop.set()
         def abort(self): pass
         def close(self): pass
-    monkeypatch.setitem(sys.modules, 'sounddevice', SimpleNamespace(InputStream=Stream,
+    monkeypatch.setitem(sys.modules, 'sounddevice', SimpleNamespace(RawInputStream=Stream,
         query_devices=lambda *a: {'default_samplerate': 16000}, check_input_settings=lambda **kw: None))
     recorder = Recorder()
+    class VAD:
+        def reset(self): pass
+        def __call__(self, data): return 1.
+    recorder.vad = VAD()
     recorder.configure(replace(AppConfig(), voice_max_seconds=120))
     audio = recorder.record(None, stop, Event(), lambda: None)
-    assert audio.size == 40 * 16000
+    assert audio.size == 20 * 32768
 
 
 def test_wake_reconfigures_command_limit_and_vad_sensitivity(app, tmp_path):
@@ -274,9 +274,10 @@ def test_orb_pause_is_enabled_when_synthesis_becomes_playable(app, tmp_path, mon
     try:
         wait_until(app, lambda: not window.controller.discovering)
         player = window.controller.playback
-        monkeypatch.setattr(player, 'play', lambda path: setattr(player, '_path', path))
+        monkeypatch.setattr(player, 'play', lambda path: setattr(player, '_audio', path))
         queue = window.background.speech
-        path = tmp_path / 'response.wav'; path.touch()
+        from eidos.modules.voice.pcm import PCMAudio
+        path = PCMAudio(bytes(1024))
         queue._inflight = Event()
         queue._current_config = window.config
         queue._result(queue._inflight, path, '')
@@ -296,15 +297,16 @@ def test_stop_cancels_pending_input_and_paused_speech(app, tmp_path):
         background = window.background
         background.pending_voice = True
         background._pending_audio = (np.ones(16000), 'pending')
-        path = tmp_path / 'paused.wav'
-        path.touch()
-        window.controller.playback._path = path
+        from eidos.modules.voice.pcm import PCMAudio
+        path = PCMAudio(bytes(1024))
+        window.controller.playback._audio = path
+        window.controller.playback._output = SimpleNamespace(suspend=lambda: None, resume=lambda: None, stop=lambda: None, deleteLater=lambda: None)
         window.controller.playback.paused = True
         background.speech._playing = True
         background.stop_action()
         assert not background.pending_voice and background._pending_audio is None
         assert not background.speech.active and not window.controller.playback.active
-        assert not path.exists()
+        assert window.controller.playback._audio is None
     finally:
         window.request_exit()
         wait_until(app, lambda: window._allow_close)
@@ -390,8 +392,10 @@ def test_muting_mic_preserves_playback_pause_state(app, tmp_path):
     from eidos.ui.main_window import MainWindow
     window = MainWindow(ConfigStore(tmp_path / 'config.json'))
     try:
-        path = tmp_path / 'test.wav'; path.touch()
-        window.controller.playback._path = path
+        from eidos.modules.voice.pcm import PCMAudio
+        path = PCMAudio(bytes(1024))
+        window.controller.playback._audio = path
+        window.controller.playback._output = SimpleNamespace(suspend=lambda: None, resume=lambda: None, stop=lambda: None, deleteLater=lambda: None)
         window.background.speech._playing = True
         window.background.toggle_pause()
         assert not window.controller.playback.paused

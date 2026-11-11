@@ -2,7 +2,8 @@
 from dataclasses import replace
 from collections import deque
 from PyQt6.QtCore import QObject, QTimer, Qt
-from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
+from PyQt6.QtWidgets import QApplication, QSystemTrayIcon
+from eidos.ui.localized import QMenu
 from .icons import icon
 from .mascot import Mascot
 from eidos.modules.voice.speech import SpeechQueue
@@ -15,6 +16,7 @@ class BackgroundControls(QObject):
         super().__init__(window)
         self.window = window
         self.paused = self.pending_voice = self.closing = False
+        self.sleeping = False
         self._capture_visible = False
         self._capture_active = False
         self._pending_audio = None
@@ -22,9 +24,10 @@ class BackgroundControls(QObject):
         self._quiet_until = 0.
         self._listening_count = 0
         self.listen_enabled = False
+        self.latch = None
         self._greeting_pending = self._greeted = False
         self._response_completed = False
-        self._microphones = {'manual': ('inactive', ''), 'wake': ('inactive', '')}
+        self._microphones = {'manual': ('inactive', ''), 'wake': ('inactive', ''), 'latched': ('inactive', '')}
         self.floating = window.placement.desktop
         self.floating.start_requested.connect(self.voice_action)
         self.floating.stop_requested.connect(self.stop_action)
@@ -39,17 +42,20 @@ class BackgroundControls(QObject):
         self.wake.activated.connect(self._wake_triggered)
         self.wake.command_ready.connect(self._wake_audio)
         self.wake.level.connect(self.level)
+        self.wake.speech_activity.connect(self._voice_activity)
         self.wake.microphone_changed.connect(lambda state, text: self._microphone_changed('wake', state, text))
         self.wake.status.connect(self._wake_status)
         self.wake.stopped.connect(self._try_voice)
         self.wake.stopped.connect(window._closed)
         window.controller.level.connect(self.level)
+        window.controller.speech_activity.connect(self._voice_activity)
         window.controller.microphone_changed.connect(lambda state, text: self._microphone_changed('manual', state, text))
         window.controller.devices_error.connect(lambda text: self._microphone_changed('manual', 'error', text))
         window.controller.playback.level.connect(self.speech_level)
         window.controller.playback.finished.connect(self._audio_ended)
         window.controller.reply.connect(self.floating.set_answer)
         window.controller.reply.connect(self._mark_response_completed)
+        window.controller.input_stop_requested.connect(self._disable_input)
         self.tray = QSystemTrayIcon(window.windowIcon(), window)
         menu = QMenu(window)
         menu.addAction('Открыть Eidos', self.open_window)
@@ -104,6 +110,7 @@ class BackgroundControls(QObject):
         visual = mapping.get(state, state)
         if visual not in ('ready', 'listening', 'thinking', 'acting', 'speaking', 'error', 'paused'):
             visual = 'thinking'
+        self.window.voice.mascot.set_message(message)
         for mascot in self.mascots():
             mascot.set_state(visual)
         response = {'ready': 'Ответ: готов', 'listening': 'Ответ: ожидаю команду',
@@ -120,10 +127,11 @@ class BackgroundControls(QObject):
 
     def _microphone_changed(self, source, state, message):
         self._microphones[source] = (state, message)
-        if source == 'manual' and state == 'enabled' and self.listen_enabled and not self._greeted:
+        if source in ('manual', 'latched') and state == 'enabled' and self.listen_enabled and not self._greeted:
             self._greeted = True
             self._greeting_pending = True
-            self.window.controller.cancel()
+            if source == 'manual':
+                self.window.controller.cancel()
         if source == 'manual' and state == 'error':
             self.listen_enabled = False
             self._greeting_pending = False
@@ -139,22 +147,32 @@ class BackgroundControls(QObject):
         state, message = ('off', '') if self.paused else next(
             ((kind, text) for kind in ('recording', 'waiting', 'enabled', 'error')
              for actual, text in states if kind == actual), ('inactive' if self.listen_enabled else 'off', ''))
+        self.window.voice.mascot.set_context(sleeping=self.sleeping,
+                                            wake_ready=state == 'waiting' and not self.paused and
+                                            self.wake.is_running and self.window.config.wake_word_enabled)
         self.window.voice.set_microphone(state, message)
         self.floating.set_microphone(state, message)
         self.window.character.set_microphone(state, message)
         self.window.mascot_stage.status_label.setText(
-            self.window.voice.title.text() + ' · Перетащите персонажа / меню правой кнопкой')
+            self.window.voice.title.source_text() + ' · Перетащите персонажа / меню правой кнопкой')
         action = 'Выключить голосовой режим' if self.listen_enabled else 'Включить голосовой режим'
-        for button in (self.window.voice.action_button, self.floating.start_button):
+        for button in (self.floating.start_button,):
             button.setText(action)
             button.setAccessibleName(action)
             button.setToolTip(action + '\nПробел / Enter при фокусе')
+        self.window.voice.mascot._accessibility()
 
     def level(self, value):
         self.window.voice.input_level.setText(f'Входной уровень: {min(100, round(value * 1000))}%')
         for mascot in self.mascots():
             mascot.set_level(value)
         self.floating.set_level(value)
+
+    def _voice_activity(self, level, speaking):
+        # Existing single-owner handoff suspends capture during Eidos output.
+        # Also discard queued VAD frames while synthesis/playback is active.
+        allowed = not self.paused and not self.speech.active and not self.window.controller.playback.active and self.window.voice.mascot.state != 'speaking'
+        self.window.voice.mascot.set_voice_activity(level, speaking and allowed)
 
     def speech_level(self, value):
         self.window.voice.mascot.set_speech_level(value)
@@ -198,6 +216,10 @@ class BackgroundControls(QObject):
         window = self.window
         if self.closing:
             return
+        if self.sleeping:
+            self.sleeping = False
+            self.listen_enabled = False
+        self.sleeping = False
         if self.listen_enabled:
             self.listen_enabled = False
             self._greeting_pending = False
@@ -223,6 +245,10 @@ class BackgroundControls(QObject):
         if self.wake.is_running or self.speech.active or self._pending_speech or window.controller.active or window.controller.discovering:
             return
         self.pending_voice = False
+        from eidos.modules.voice.stt import LocalSTT
+        if self.listen_enabled and isinstance(window.controller.worker.stt, LocalSTT):
+            self._start_latched_input()
+            return
         if not self.listen_enabled:
             window.voice.recognized.text.clear()
             window.voice.answer.text.clear()
@@ -237,6 +263,68 @@ class BackgroundControls(QObject):
             self._listening_count += 1
             window.voice.set_operation(listening_reply(window.config.communication_style,
                 window.agent_service.settings.name, use_name=self._listening_count % 4 == 0))
+
+    def _start_latched_input(self):
+        if self.latch is not None:
+            return
+        from eidos.modules.voice.latched import LatchedInput
+        config = replace(self.window.config, speak=False, continuous_listening=True)
+        thread = LatchedInput(config, self.window.controller.cache, self)
+        self.latch = thread
+        thread.recognized.connect(self._latched_text)
+        thread.microphone_changed.connect(lambda state, text: self._microphone_changed('latched', state, text))
+        thread.level.connect(self.level)
+        thread.speech_activity.connect(self._voice_activity)
+        thread.failed.connect(self._latched_failed)
+        def finished():
+            if self.latch is thread:
+                self.latch = None
+            self.window._closed()
+        thread.finished.connect(finished)
+        thread.finished.connect(thread.deleteLater)
+        thread.start()
+
+    def _latched_text(self, phrase):
+        if self.closing or self.paused or not self.listen_enabled:
+            return
+        from eidos.modules.voice.intents import stop_input_intent
+        if stop_input_intent(phrase.text):
+            self.window.voice.recognized.text.setPlainText(phrase.text)
+            self._disable_input()
+            return
+        desktop = self.window.agent_service.desktop
+        if phrase.text.strip().lower().rstrip('.!?') == 'отмена' and desktop.pending:
+            desktop.cancel_pending()
+            self.window.desktop_ui.hide_power()
+            self.stop_speech()
+            if self.window.controller.active:
+                self.window.controller.cancel()
+            if self.window.agent_controller.active:
+                self.window.agent_controller.cancel()
+            self.window.voice.set_operation('Действие отменено')
+            return
+        if phrase.overlapped_output:
+            return
+        # Keep listening for the stop word while speaking. Other overlapping
+        # phrases (including speaker echo) never form an unbounded command queue.
+        if (self.window.controller.active or self.window.controller.playback.active
+                or self.speech.active or self._pending_speech or self.window.agent_controller.active):
+            return
+        from uuid import uuid4
+        self.window.controller.start_audio(replace(self.window.config, speak=False, continuous_listening=True),
+            phrase, uuid4().hex, wake=False)
+
+    def _latched_failed(self, message):
+        self._disable_input()
+        self.status('error', message)
+
+    def _disable_input(self):
+        self.listen_enabled = False
+        self.paused = True
+        self._greeting_pending = False
+        self.stop_action()
+        self.wake.pause(True)
+        self._refresh_microphone()
 
     def _wake_triggered(self):
         if self.paused or self.closing:
@@ -260,7 +348,7 @@ class BackgroundControls(QObject):
             self._audio_ended()
 
     def _audio_ended(self):
-        self._quiet_until = time.monotonic() + .7
+        self._quiet_until = time.monotonic() + .15
 
     def stop_action(self):
         self._response_completed = False
@@ -268,8 +356,12 @@ class BackgroundControls(QObject):
         self._pending_audio = None
         self.wake.set_busy(True)
         self.stop_speech()
+        if self.latch:
+            self.latch.stop()
         if self.window.controller.active:
             self.window.controller.cancel()
+        else:
+            self.window.controller.release_microphone.emit()
         if self.window.agent_controller.active:
             self.window.agent_controller.cancel()
         if self.window.translation._selecting:
@@ -278,6 +370,16 @@ class BackgroundControls(QObject):
             self.window.translation.cancel_translation()
 
     def _speech_state(self, state, message):
+        if self.latch and hasattr(self.latch, 'output_active'):
+            if state in ('playing', 'paused'):
+                self.latch.output_active.set()
+            else:
+                listener = self.latch
+                # Keep the output marker across the physical speaker's tail.
+                def clear_output():
+                    if self.latch is listener and not self.speech.active:
+                        listener.output_active.clear()
+                QTimer.singleShot(350, clear_output)
         self.status(state, message)
         self.window.voice.set_operation(message)
         if state == 'idle':
@@ -300,6 +402,7 @@ class BackgroundControls(QObject):
 
     def toggle_pause(self):
         self.paused = not self.paused
+        self.sleeping = self.paused
         self.pending_voice = False
         self._pending_audio = None
         self.wake.pause(self.paused)
@@ -309,6 +412,8 @@ class BackgroundControls(QObject):
             'Отключить голосовой ввод и активацию. Озвучка управляется отдельно.')
         self.floating.set_microphone_paused(self.paused)
         if self.paused:
+            if self.latch:
+                self.latch.stop()
             if self.window.current_state in ('starting', 'recording'):
                 self.window.controller.cancel()
         player = self.window.controller.playback
@@ -319,6 +424,18 @@ class BackgroundControls(QObject):
         elif not self.window.controller.active and not self.speech.active:
             self.status('ready', 'Готов к голосовому вводу')
         self.window._update_controls()
+        self._refresh_microphone()
+
+    def stop_voice_input(self):
+        """Release input on leaving the voice stage; existing replies can finish."""
+        self.listen_enabled = self.pending_voice = self.sleeping = False
+        self._pending_audio = None
+        self.paused = True
+        if self.latch:
+            self.latch.stop()
+        self.wake.pause(True)
+        if self.window.current_state in ('starting', 'recording'):
+            self.window.controller.cancel()
         self._refresh_microphone()
 
     def open_window(self):
@@ -355,4 +472,6 @@ class BackgroundControls(QObject):
         self.tray.hide()
         self.window.placement.shutdown()
         self.wake.shutdown()
+        if self.latch:
+            self.latch.stop()
         self.speech.shutdown()

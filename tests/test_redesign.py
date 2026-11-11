@@ -29,17 +29,18 @@ def test_navigation_and_future_actions_disabled(app, tmp_path):
     window = MainWindow(ConfigStore(tmp_path / 'config.json'))
     try:
         assert isinstance(window.pages, QStackedWidget)
-        assert window.pages.count() == 8
+        assert window.pages.count() == 7
         for index, button in zip(window.sidebar.page_ids, window.sidebar.buttons):
             button.click()
             assert window.pages.currentIndex() == index
             assert button.isChecked()
         assert window.gestures.camera_button.isEnabled() == bool(window.gestures._devices)
         assert window.translation.select_button.isEnabled()
-        window.home.voice_button.click()
-        assert window.pages.currentIndex() == 1
-        window.sidebar.assistant_button.click()
-        assert window.pages.currentIndex() == 5
+        window.navigate(1)
+        assert window.pages.currentIndex() == 0
+        assert window.sidebar.group.button(5) is None
+        window.navigate(5)
+        assert window.pages.currentIndex() == 0
     finally:
         close_window(window, app)
 
@@ -93,7 +94,7 @@ def test_voice_real_signal_binding_and_copy(app, tmp_path):
         assert window.voice.action_button.text() == 'Включить голосовой режим'
         window._state_changed('loading', 'Первая загрузка модели: требуется интернет')
         assert window.voice.mascot.state == 'thinking'
-        assert 'интернет' in window.voice.operation.text()
+        assert 'интернет' in window.voice._operation_message
         window._state_changed('error', 'Ошибка микрофона')
         assert window.voice.mascot.state == 'error'
         window._state_changed('idle', 'Готово')
@@ -108,7 +109,7 @@ def test_compact_mode_and_small_page_scroll(app, tmp_path):
         window.show()
         window.set_compact(True)
         app.processEvents()
-        assert window.pages.currentIndex() == 1
+        assert window.pages.currentIndex() == 0
         assert window.sidebar.isHidden()
         assert not window.return_button.isHidden()
         window.set_compact(False)
@@ -116,8 +117,8 @@ def test_compact_mode_and_small_page_scroll(app, tmp_path):
         window.resize(820, 580)
         window.navigate(4)
         app.processEvents()
-        assert window.settings.scroll.widgetResizable()
-        assert window.settings.scroll.verticalScrollBar().maximum() > 0
+        assert window.settings.general_page.scroll.widgetResizable()
+        assert window.settings.general_page.scroll.verticalScrollBar().maximum() > 0
     finally:
         close_window(window, app)
 

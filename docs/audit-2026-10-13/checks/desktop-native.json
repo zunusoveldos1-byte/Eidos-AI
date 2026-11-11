@@ -1,0 +1,36 @@
+{
+  "screenshot_primary": {
+    "ok": true,
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "screenshot_all": {
+    "ok": true,
+    "size": [
+      3628,
+      1106
+    ]
+  },
+  "audio": {
+    "ok": true
+  },
+  "browser": {
+    "ok": true,
+    "meaning": "Windows accepted HTTPS launch; page loading not asserted"
+  },
+  "application": {
+    "ok": true,
+    "window_found": true
+  },
+  "session_restore": {
+    "ok": true,
+    "summary": "Запускаю 0 приложения. Не найдено: 0. Уже открыто: 1.",
+    "mode": "already-running skip"
+  },
+  "session_launch": {
+    "ok": true,
+    "summary": "Запускаю 1 приложения. Не найдено: 0. Уже открыто: 0."
+  }
+}

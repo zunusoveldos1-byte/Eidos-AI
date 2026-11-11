@@ -1,13 +1,12 @@
 """Reusable native widgets, responsive rows and scrollable pages."""
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QColor, QPainter, QPen
-from PyQt6.QtWidgets import (
-    QAbstractButton, QApplication, QBoxLayout, QComboBox, QFrame, QHBoxLayout,
-    QLabel, QLayout, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QStyle,
-    QStyleOptionComboBox, QStylePainter, QVBoxLayout, QWidget,
-)
+from PyQt6.QtWidgets import QApplication, QBoxLayout, QFrame, QHBoxLayout, QLayout, QScrollArea, QSizePolicy, QStyle, QStyleOptionComboBox, QStylePainter, QVBoxLayout
+from eidos.ui.localized import QComboBox, QLabel, QPlainTextEdit, QPushButton, QWidget
 from .icons import icon
 from .theme import ACCENT
+from eidos.ui.localized import QAbstractButton
+from eidos.core.i18n import tr
 
 def label(text: str, role: str = '', centered: bool = False) -> QLabel:
     widget = QLabel(text)
@@ -77,6 +76,7 @@ class Card(QFrame):
         row = QHBoxLayout()
         if name:
             image = QLabel()
+            image.setProperty('headingIcon', name)
             image.setPixmap(icon(name, '#F2F6F3').pixmap(25, 25))
             image.setFixedSize(28, 28)
             row.addWidget(image)
@@ -169,10 +169,17 @@ class ResultText(QPlainTextEdit):
 
     def setPlaceholderText(self, text: str) -> None:
         if self.centered:
-            self._empty_text = text
+            self._ui_sources['setPlaceholderText'] = text
+            self._empty_text = tr(text)
             self.viewport().update()
         else:
             super().setPlaceholderText(text)
+
+    def retranslate(self):
+        super().retranslate()
+        if self.centered:
+            self._empty_text = tr(self._ui_sources.get('setPlaceholderText', ''))
+            self.viewport().update()
 
     def paintEvent(self, event) -> None:
         super().paintEvent(event)

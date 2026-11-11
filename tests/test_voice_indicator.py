@@ -25,12 +25,12 @@ def test_indicator_follows_actual_stream_start_and_close(monkeypatch, tmp_path, 
             assert not any(s in ('enabled', 'recording') for s, _ in states)
             if failure:
                 raise OSError('device removed')
-            self.callback(np.ones((1600, 1), dtype=np.float32) * .08, 1600, None, False)
+            self.callback(np.full(512, 2621, dtype='<i2').tobytes(), 512, None, False)
             worker.stop_event.set()
         def abort(self): pass
         def close(self): pass
     monkeypatch.setitem(sys.modules, 'sounddevice', SimpleNamespace(
-        InputStream=Stream, query_devices=lambda *_: {'default_samplerate': 16000},
+        RawInputStream=Stream, query_devices=lambda *_: {'default_samplerate': 16000},
         check_input_settings=lambda **_: None))
     class STT:
         def transcribe(self, *args):
@@ -70,7 +70,8 @@ def test_real_mic_status_shared_and_error_survives_idle(app, tmp_path):
                              ('error', 'Ошибка микрофона')]:
             window.controller.microphone_changed.emit(state, 'Проверьте подключение устройства' if state == 'error' else '')
             assert window.voice.mascot.microphone_state == floating.mascot.microphone_state == state
-            assert window.voice.title.text() == floating.microphone_label.text() == title
+            assert floating.microphone_label.text() == title
+            assert window.voice.title.text() == {'enabled': 'Слушаю вас', 'recording': 'Слушаю вас', 'error': 'Микрофон не найден'}[state]
         window._state_changed('idle', 'Ошибка. Можно повторить запись')
         assert floating.mascot.microphone_state == 'error'
         assert 'ошибка' in window.voice.response_status.text().lower()
@@ -90,7 +91,8 @@ def test_mute_is_immediate_and_does_not_pause_reply(app, tmp_path):
         window.controller.microphone_changed.emit('recording', '')
         window.background.toggle_pause()
         window.controller.microphone_changed.emit('enabled', '')  # Late capture event after mute.
-        assert floating.microphone_label.text() == window.voice.title.text() == 'Микрофон выключен'
+        assert floating.microphone_label.text() == 'Микрофон выключен'
+        assert window.voice.title.text() == 'Спит'
         assert floating.mascot.microphone_state == 'off'
         assert not window.controller.playback.paused
         window.background.status('paused', 'Озвучка на паузе')
@@ -109,7 +111,8 @@ def test_waiting_only_after_wake_stream_opens_and_stops(app, tmp_path):
         background._wake_status('Ожидаю слово активации…')
         assert window.voice.mascot.microphone_state == 'off'  # Text alone cannot assert capture.
         background.wake.microphone_changed.emit('waiting', '')
-        assert window.voice.title.text() == background.floating.microphone_label.text() == 'Жду: „Эйдос“'
+        assert background.floating.microphone_label.text() == 'Жду: „Эйдос“'
+        assert window.voice.title.text() == 'Спит'
         background.wake.microphone_changed.emit('inactive', '')
         assert window.voice.mascot.microphone_state == 'off'
     finally:

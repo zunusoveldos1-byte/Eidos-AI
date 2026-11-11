@@ -1,8 +1,7 @@
 """Assistant workspace; technical settings stay inside tabs, not the sidebar."""
-from PyQt6.QtCore import QDateTime, Qt
-from PyQt6.QtWidgets import (QCheckBox, QDateTimeEdit, QDialog, QHBoxLayout, QLineEdit,
-                            QListWidget, QListWidgetItem, QPlainTextEdit, QSpinBox,
-                            QTabWidget, QVBoxLayout, QWidget, QLabel, QScrollArea)
+from PyQt6.QtCore import QDateTime, Qt, pyqtSignal
+from PyQt6.QtWidgets import QDateTimeEdit, QHBoxLayout, QListWidget, QListWidgetItem, QVBoxLayout, QScrollArea
+from eidos.ui.localized import QCheckBox, QDialog, QLineEdit, QPlainTextEdit, QSpinBox, QTabWidget, QWidget, QLabel
 from ..components import Page, Card, ResponsiveRow, button, combo, label
 from eidos.agent.settings import PROFESSIONS, REMOTE_PERMISSIONS
 
@@ -28,7 +27,8 @@ def row(layout, *widgets):
 
 
 class FeedbackLabel(QLabel):
-    """Reserve space only while an actual service message is displayed."""
+    """Internal message buffer with transient notification delivery."""
+    notification = pyqtSignal(str)
     def __init__(self):
         super().__init__()
         self.setObjectName('muted')
@@ -38,7 +38,8 @@ class FeedbackLabel(QLabel):
 
     def setText(self, text):
         super().setText(text)
-        self.setVisible(bool(text))
+        self.hide()
+        if text: self.notification.emit(text)
 
 
 class ProfileForm(Card):
@@ -100,9 +101,11 @@ class Onboarding(QDialog):
         self.save.clicked.connect(self.accept)
 
 
-class AssistantPage(Page):
+class AssistantPage(QWidget):
+    """Internal form owner for tools/settings; no dialogue destination."""
     def __init__(self, service):
-        super().__init__('Диалог', 'Задайте вопрос, дайте команду или приложите документ')
+        super().__init__()
+        self.body = QVBoxLayout(self)
         self.service = service
         self.tabs = QTabWidget()
         self.sections = {}
@@ -111,7 +114,7 @@ class AssistantPage(Page):
         self.body.addWidget(self.tabs, 1)
         self.feedback = FeedbackLabel()
         self.body.addWidget(self.feedback)
-        self._chat()
+        self._task_controls()
         self._memory()
         self._calendar()
         self._skills()
@@ -130,9 +133,10 @@ class AssistantPage(Page):
         self.sections[title] = page
         return page
 
-    def _chat(self):
-        page = self.tab('Диалог', 'Начните с вопроса или команды Windows. Микрофон здесь не включается.')
-        self.chat_page = page
+    def _task_controls(self):
+        page = QWidget(self)
+        page.body = QVBoxLayout(page)
+        page.hide()
         header = Card(margins=14)
         self.task_status = label('Готов к запросу', 'h2')
         self.stop = button('Остановить')
@@ -143,8 +147,7 @@ class AssistantPage(Page):
         page.body.addWidget(self.profile_hint)
         self.history = text_area(190, True)
         self.history.setObjectName('conversation')
-        self.history.setPlaceholderText('История текущего диалога. Постоянная память включается отдельно.')
-        self.history.setAccessibleName('История диалога')
+        self.history.setAccessibleName('Журнал действий (без текста разговоров и ключей)')
         page.body.addWidget(self.history)
         self.input = text_area(70)
         self.input.setObjectName('conversation')
@@ -153,9 +156,7 @@ class AssistantPage(Page):
         self.input.setAccessibleName('Ваш запрос')
         page.body.addWidget(self.input)
         self.incognito = QCheckBox('Разговор без сохранения')
-        self.send = button('Отправить', 'message', True)
-        self.voice_input = button('Голосовой ввод', 'mic')
-        row(page.body, self.incognito, self.voice_input, self.send)
+        page.body.addWidget(self.incognito)
         self.select_files = button('Выбрать файлы', 'file')
         self.select_folder = button('Рабочая папка')
         self.forget_files = button('Закрыть доступ к файлам')
@@ -283,7 +284,7 @@ class AssistantPage(Page):
         page.body.addWidget(permissions)
         self.connections_save = button('Сохранить подключения', primary=True)
         self.secret_delete = combo()
-        self.secret_delete.addItems(['telegram', 'discord', 'openai', 'brave'])
+        self.secret_delete.addItems(['telegram', 'discord', 'openai', 'gemini', 'brave'])
         self.secret_delete_button = button('Удалить секрет')
         row(page.body, self.connections_save, self.secret_delete, self.secret_delete_button)
         page.body.addWidget(label('Discord: пригласите бота на сервер с View Channel / Read Message History / Send Messages; включите Message Content Intent. Проверка токена не проверяет разрешения конкретного канала. Внешний календарь: адаптер пока не реализован.', 'muted'))
@@ -294,6 +295,7 @@ class AssistantPage(Page):
         self.provider = combo()
         self.provider.addItem('Ollama — локально', 'ollama')
         self.provider.addItem('OpenAI — облако', 'openai')
+        self.provider.addItem('Gemini API — облако', 'gemini')
         self.provider.setCurrentIndex(self.provider.findData(settings.provider))
         self.model_name = edit('Имя модели Ollama')
         self.model_name.setText(settings.model)
@@ -301,6 +303,11 @@ class AssistantPage(Page):
         self.ollama_url.setText(settings.ollama_url)
         self.cloud_model = edit('Модель OpenAI')
         self.cloud_model.setText(settings.cloud_model)
+        self.gemini_model = edit('Модель Gemini')
+        self.gemini_model.setText(settings.gemini_model)
+        self.gemini_key = edit('Новый Gemini API Key')
+        self.gemini_key.setEchoMode(QLineEdit.EchoMode.Password)
+        self.gemini_key.setToolTip('Ключ хранится в Windows Credential Manager. Пустое поле сохраняет прежний ключ.')
         self.context_size = QSpinBox()
         self.context_size.setRange(1024, 8192)
         self.context_size.setSingleStep(1024)
@@ -309,8 +316,11 @@ class AssistantPage(Page):
         row(page.body, label('Ollama-модель'), self.model_name)
         row(page.body, label('Адрес'), self.ollama_url)
         row(page.body, label('Облачная модель'), self.cloud_model)
+        row(page.body, label('Модель Gemini'), self.gemini_model)
+        row(page.body, label('Gemini API Key'), self.gemini_key)
         row(page.body, label('Контекст Ollama, токенов'), self.context_size)
         self.search_provider = combo()
+        self.search_provider.addItem('Google', 'google')
         self.search_provider.addItem('DuckDuckGo', 'duckduckgo')
         self.search_provider.addItem('Bing', 'bing')
         self.search_provider.addItem('Brave Search API — источники', 'brave')
@@ -319,11 +329,15 @@ class AssistantPage(Page):
         self.model_save = button('Сохранить модель', primary=True)
         self.server_start = button('Запустить Ollama')
         self.model_pull = button('Загрузить модель')
+        self.model_refresh = button('Проверить состояние сервиса')
+        self.model_status = label('Сервис не проверен. Установленная модель и модель в памяти — разные состояния.', 'secondary')
+        page.body.addWidget(self.model_status)
+        page.body.addWidget(self.model_refresh)
         row(page.body, self.model_save, self.server_start, self.model_pull)
         self.model_test = button('Проверить ответ и tool calling')
         self.hardware_test = button('Диагностика ноутбука')
         row(page.body, self.hardware_test, self.model_test)
-        page.body.addWidget(label('Для RTX 3050 6 ГБ / RAM 16 ГБ: Qwen3 4B Q4_K_M (2,5 ГБ), контекст 4096, GPU. Облегчённый: Qwen3 1.7B (1,4 ГБ), 2048. Thinking отключён. Скорость определяется измерением. Whisper по умолчанию CPU int8; свободную RAM проверяйте перед совместной работой.', 'muted'))
+        page.body.addWidget(label('Qwen3 4B Q4_K_M занимает примерно 2,5 ГБ на диске; оперативная и видеопамять зависят от контекста. Диагностика показывает реальное оборудование. Загрузка требует подтверждения; установленная модель запускается при запросе.', 'muted'))
         self.hardware_display = text_area(150, True)
         self.hardware_display.setPlaceholderText('Здесь появятся реальные результаты диагностики / проверки модели')
         page.body.addWidget(self.hardware_display)
